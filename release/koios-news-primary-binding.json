@@ -1,0 +1,8 @@
+{
+  "kind": "koios.news.cloudflare-release-binding/v1",
+  "accountId": "337e54ee6dc7d488933f473204a6d89e",
+  "workerName": "koios-news-primary",
+  "hostname": "koios.news",
+  "routePattern": "koios.news/*",
+  "effect": "cloudflare-worker-static-publication"
+}

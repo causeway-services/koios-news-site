@@ -1,0 +1,62 @@
+name: Publisher discovery conformance
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/discovery-audit.mjs"
+      - "scripts/audit-discovery.mjs"
+      - "test/discovery-audit.test.mjs"
+      - ".github/workflows/discovery-readiness.yml"
+  pull_request:
+    paths:
+      - "src/discovery-audit.mjs"
+      - "scripts/audit-discovery.mjs"
+      - "test/discovery-audit.test.mjs"
+      - ".github/workflows/discovery-readiness.yml"
+  schedule:
+    - cron: "17 12 * * 2"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publisher-discovery
+  cancel-in-progress: false
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Check source and run isolated, dependency-free assessment contract tests
+        run: |
+          node --check src/discovery-audit.mjs
+          node --check scripts/audit-discovery.mjs
+          node --test test/discovery-audit.test.mjs
+      - name: Independently observe production discovery
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          assessment_status=0
+          node scripts/audit-discovery.mjs https://koios.news --strict --daily-article-target=20 > "$RUNNER_TEMP/assessment.json" || assessment_status=$?
+          node --input-type=module - "$RUNNER_TEMP/assessment.json" >> "$GITHUB_STEP_SUMMARY" <<'NODE'
+          import { readFileSync } from "node:fs";
+          const report = JSON.parse(readFileSync(process.argv[2], "utf8"));
+          console.log("## Koios.News discovery receiving");
+          console.log("Observed:", report.observedAt);
+          console.log("Technical discovery sample ready:", report.decision.technicalDiscoverySampleReady);
+          console.log("Publisher-declared NEW-article cadence:", JSON.stringify(report.decision.publicationCadence));
+          console.log("A news sitemap alone cannot prove article delivery or editorial approval.");
+          console.log("Cloudflare Pay Per Crawl:", report.decision.payPerCrawlEligible);
+          console.log("Actual search placement proven:", report.decision.searchPlacementProven);
+          console.log("AI answer citation proven:", report.decision.agentCitationProven);
+          for (const f of report.findings.filter((f) => f.state !== "pass")) {
+            console.log("- " + f.state + " — " + f.id + ": " + f.description);
+          }
+          NODE
+          exit "$assessment_status"

@@ -1,0 +1,62 @@
+{
+  "name": "@causeway-services/koios-news-site",
+  "version": "0.1.3",
+  "private": false,
+  "type": "module",
+  "description": "The Koios.News public website, built from the parent service section's publication inputs.",
+  "engines": {
+    "node": ">=24.2"
+  },
+  "exports": {
+    "./frozen-lockfile": "./release/pnpm-lock.yaml",
+    "./release": "./src/release.mjs",
+    "./release-observation": "./src/release-observation.mjs",
+    "./build": "./src/build.mjs",
+    "./carrier": "./src/carrier.mjs",
+    "./build-property": "./scripts/build-property.mjs",
+    "./release-binding": "./release/koios-news-primary-binding.json",
+    "./discovery-audit": "./src/discovery-audit.mjs"
+  },
+  "scripts": {
+    "build": "node scripts/build-property.mjs",
+    "test": "node --test test/*.test.mjs",
+    "discovery:audit": "node scripts/audit-discovery.mjs",
+    "test:discovery": "node --test test/discovery-audit.test.mjs",
+    "build:publication": "node scripts/build-property.mjs"
+  },
+  "bin": {
+    "koios-website-build": "./scripts/build-property.mjs",
+    "koios-website-release": "./scripts/release-property.mjs"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "@red-cup-engineering/cryptographic-computer-data-engineering-services-section": "0.3.1",
+    "@red-cup-engineering/json-services-section": "0.4.0",
+    "@red-cup-engineering/computer-serialized-content-engineering-services-section": "0.1.0",
+    "sharp": "0.35.5",
+    "wrangler": "4.127.1",
+    "@red-cup-engineering/computer-text-content-engineering-services-section": "0.1.0",
+    "@red-cup-engineering/web-theming-service": "0.0.7",
+    "@red-cup-engineering/html-engineering-services-section": "0.1.4",
+    "@red-cup-engineering/computer-triplet-serialized-content-engineering-services-section": "0.1.2",
+    "@red-cup-engineering/image-authoring-service": "0.1.0"
+  },
+  "packageManager": "pnpm@11.28.5",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/causeway-services/koios.news.git"
+  },
+  "files": [
+    "src",
+    "scripts",
+    "release",
+    "README.md",
+    "package.json"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.561.group/"
+  },
+  "registryConsumption": {
+    "frozenLockfile": "./release/pnpm-lock.yaml"
+  }
+}

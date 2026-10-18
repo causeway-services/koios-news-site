@@ -1,0 +1,6 @@
+node_modules/
+.wrangler/
+.public/
+
+# Independently pinned build suppliers; never commit their implementation here.
+.sources/
