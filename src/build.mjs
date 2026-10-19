@@ -538,7 +538,9 @@ function assetHeaders(property) {
         !Number.isFinite(Number(crawl.articlePriceUsd))) {
       throw new TypeError("payPerCrawl requires Cloudflare and an exact positive USD article quote");
     }
-    articlePrice = `\n/posts/*\n  Crawler-Price: USD ${crawl.articlePriceUsd}\n`;
+    // A :slug placeholder matches one canonical article segment only.
+    // /posts/* also prices nested citation.json and auxiliary source routes.
+    articlePrice = `\n/posts/:slug/\n  Crawler-Price: USD ${crawl.articlePriceUsd}\n`;
   }
   return `/*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'${adOrigin}; frame-src 'self'${aadsOrigin}; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

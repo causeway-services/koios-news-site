@@ -171,6 +171,24 @@ Never synthesize recent dates or dummy articles to satisfy this check.
 
 ### Cloudflare Pay Per Crawl: eligibility and safe rollout
 
+The actual static renderer emits one Cloudflare Workers `_headers` rule on
+`/posts/:slug/`, not the old greedy `/posts/*`. Cloudflare's route placeholder
+matches only one article slug: citation and other nested machine resources do
+not inherit the origin article price header. This only quotes a price. It does
+**not** enable an account, enroll a domain, change payment rules, guarantee free
+crawl of other paths, collect money or establish a billable response. If the
+zone-wide default action is Charge, Cloudflare Configuration Rules must disable
+Pay Per Crawl for the intended free homepage, categories, navigation, feeds,
+citation resources and API discovery; the absence of this header does not
+create that exemption. Search engine crawlers must remain Allow under the
+provider's verified category, rather than blocking or charging them.
+Cloudflare documents this matching syntax at
+https://developers.cloudflare.com/workers/static-assets/headers/ and the zone
+pricing distinction at
+https://developers.cloudflare.com/ai-crawl-control/features/pay-per-crawl/use-pay-per-crawl-as-site-owner/advanced-configuration/
+
+### Cloudflare Pay Per Crawl: eligibility and safe rollout
+
 Cloudflare's Pay Per Crawl is in **closed beta** as of 2026-10-13.
 Technical readiness is not enrollment; without the zone's authorized
 settings/Stripe flow and observed charging transactions, its status is

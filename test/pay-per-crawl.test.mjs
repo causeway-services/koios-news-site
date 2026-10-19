@@ -32,9 +32,22 @@ test("Cloudflare crawler price is scoped to published article paths, never a wil
   assert.doesNotMatch(plain.headers, /crawler-price/iu);
   const priced = renderedAssets({ protocol: "cloudflare", articlePriceUsd: "0.010" });
   assert.match(priced.headers, /^\/\*\n  Content-Security-Policy:/u);
-  assert.match(priced.headers, /\n\/posts\/\*\n  Crawler-Price: USD 0\.010\n/u);
+  assert.match(priced.headers, /\n\/posts\/:slug\/\n  Crawler-Price: USD 0\.010\n/u);
   assert.doesNotMatch(priced.headers, /\n\/(?:v1|mcp|api|search|robots|sitemap)\//u);
   assert.equal(priced.headers.match(/Crawler-Price:/gu)?.length, 1);
+  // Workers static assets _headers accepts :slug as one path segment. It
+  // prices the canonical HTML page, NOT its nested machine-readable citations.
+  const quoted = priced.headers.match(/\n(\/posts\/:slug\/)\n  Crawler-Price:/u)?.[1];
+  assert.equal(quoted, "/posts/:slug/");
+  const matched = new RegExp("^" + quoted.replace(":slug", "[^/]+") + "$", "u");
+  for (const path of ["/posts/hello-world/", "/posts/another-article/"]) {
+    assert.match(path, matched);
+  }
+  for (const path of [
+    "/posts/hello-world/citation.json", "/posts/hello-world/index.html",
+    "/posts/hello-world/claims.json", "/posts/hello-world",
+    "/search/", "/robots.txt", "/sitemap.xml", "/feed.json",
+  ]) assert.doesNotMatch(path, matched, path);
   assert.match(priced.robots, /Sitemap:/u);
   assert.match(priced.sitemap, /sitemap/u);
   assert.ok(priced.manifest.artifacts.some(row => row.file === "_headers"));
