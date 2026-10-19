@@ -166,7 +166,7 @@ test("a fetched creative does not count as a view until actually visible for one
   const case1 = await observedPlacement({creative:{id:"book",title:"A book",relationship:"house"}});
   assert.equal(case1.requests.length,1);
   assert.match(case1.requests[0].url,/\/ad\?/u);
-  assert.deepEqual(case1.observer().options.threshold,[0,0.5]);
+  assert.deepEqual(Array.from(case1.observer().options.threshold),[0,0.5]);
   case1.emit(0.49);
   case1.advance(1100);
   assert.equal(case1.requests.length,1);
