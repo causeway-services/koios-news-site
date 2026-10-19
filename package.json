@@ -1,6 +1,6 @@
 {
   "name": "@causeway-services/koios-news-site",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": false,
   "type": "module",
   "description": "The Koios.News public website, built from the parent service section's publication inputs.",
@@ -41,7 +41,7 @@
     "@red-cup-engineering/html-engineering-services-section": "0.1.4",
     "@red-cup-engineering/computer-triplet-serialized-content-engineering-services-section": "0.1.2",
     "@red-cup-engineering/image-authoring-service": "0.1.0",
-    "@red-cup-engineering/signcell": "0.12.0"
+    "@red-cup-engineering/signcell": "0.12.1"
   },
   "packageManager": "pnpm@11.28.5",
   "repository": {

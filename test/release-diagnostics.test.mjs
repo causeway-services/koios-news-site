@@ -44,6 +44,9 @@ test('ordinary release progress uses the shared channel, message and packet repr
  assert.equal(emitted.length,3);
  const records=emitted.flatMap(request=>request.resourceLogs.flatMap(resource=>resource.scopeLogs.flatMap(scope=>scope.logRecords)));
  assert.equal(records.length,3);
+ const raw=records.map(record=>Object.fromEntries(record.attributes.map(({key,value})=>[key,value])));
+ assert.deepEqual(raw.map(attributes=>attributes['semioverse.message.cause_ids'].arrayValue.values.map(value=>value.stringValue)),
+  [[],[raw[0]['semioverse.message.id'].stringValue],[raw[1]['semioverse.message.id'].stringValue]]);
  const attributes=records.map(record=>Object.fromEntries(record.attributes.map(a=>[a.key,a.value.stringValue])));
  assert.equal(new Set(attributes.map(a=>a['semioverse.channel.id'])).size,1);
  assert.equal(new Set(attributes.map(a=>a['semioverse.message.id'])).size,3);

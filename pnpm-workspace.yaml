@@ -3,7 +3,7 @@ minimumReleaseAgeStrict: true
 overrides:
   '@red-cup-engineering/semiotic-content-address': 0.1.1
 minimumReleaseAgeExclude:
-  - '@red-cup-engineering/signcell@0.12.0'
+  - '@red-cup-engineering/signcell@0.12.1'
   - '@red-cup-engineering/semiotic-content-address@0.1.1'
   - '@red-cup-engineering/computer-data-engineering-services-section@0.3.1'
   - '@red-cup-engineering/metrologic@0.13.0'

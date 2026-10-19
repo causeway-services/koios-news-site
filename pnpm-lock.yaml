@@ -36,8 +36,8 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@red-cup-engineering/signcell':
-        specifier: 0.12.0
-        version: 0.12.0
+        specifier: 0.12.1
+        version: 0.12.1
       '@red-cup-engineering/web-theming-service':
         specifier: 0.0.7
         version: 0.0.7
@@ -752,8 +752,8 @@ packages:
   '@red-cup-engineering/signcell@0.1.0':
     resolution: {integrity: sha512-eYqt+s09XLX4CcG/kqmIo1n1coKSFOoIN6pR2G20lKd1rhBJt8yuyx5KKKlZfAyeJei2QWNxZRtz3DPQLIqohQ==}
 
-  '@red-cup-engineering/signcell@0.12.0':
-    resolution: {integrity: sha512-8mVAHibkawScOHizOaAiOUSHSTxSt48O7HMp7pLLrn2E23GAQzhOr7W4+ggLEhWcJ9P/zKs1FRPK6EHHQEpZMw==}
+  '@red-cup-engineering/signcell@0.12.1':
+    resolution: {integrity: sha512-cr/m6JZNn5yWzmzO1MTMRgD4RHPCs7m24ekm29zlXElwRJcpzFxZ/s1M4j9E8FW3vrKUaCxj9LcojIt7ai71Uw==}
 
   '@red-cup-engineering/signcell@0.2.0':
     resolution: {integrity: sha512-SE91f1OrKZ566DZj2U/EFpRLUYi+6vDFPkU3lzWS9qAijd1r7lfn6sla1qRKrOMqUYBCo74IZzVHmvb4FFRInw==}
@@ -1622,7 +1622,7 @@ snapshots:
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
       '@red-cup-engineering/json-schema-services-section': 0.5.0
 
-  '@red-cup-engineering/signcell@0.12.0':
+  '@red-cup-engineering/signcell@0.12.1':
     dependencies:
       '@red-cup-engineering/cbor-services-section': 0.1.1
       '@red-cup-engineering/computer-data-engineering-services-section': 0.3.1

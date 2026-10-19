@@ -73,7 +73,7 @@ test('advertising frames do not disclose the reader\'s article as referrer',()=>
   try {
     const config=configuredProperty(root);
     const settings=JSON.parse(readFileSync(config,'utf8'));
-    settings.monetization.aads={units:['12345'],header:'12345',footer:'12345',inArticle:['12345']};
+    settings.monetization.aads={units:['12345','2382512'],header:'12345',footer:'12345',inArticle:['12345']};
     writeFileSync(config,JSON.stringify(settings));
     const result=run([config,join(root,'public'),'--as-of',instant]);
     assert.equal(result.status,0,result.stderr);
@@ -89,7 +89,7 @@ test('unassigned paid slots use the original house inventory without aborting th
   try {
     const config=configuredProperty(root);
     const settings=JSON.parse(readFileSync(config,'utf8'));
-    settings.monetization.aads={units:['12345'],footer:'12345'};
+    settings.monetization.aads={units:['12345','2382512'],footer:'12345'};
     writeFileSync(config,JSON.stringify(settings));
     const result=run([config,join(root,'public'),'--as-of',instant]);
     assert.equal(result.status,0,result.stderr);
