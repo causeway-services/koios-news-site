@@ -83,3 +83,19 @@ test('advertising frames do not disclose the reader\'s article as referrer',()=>
     assert.doesNotMatch(html,/referrerpolicy="strict-origin-when-cross-origin"/);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
+
+test('unassigned paid slots use the original house inventory without aborting the publication build',()=>{
+  const root=mkdtempSync(join(tmpdir(),'koios-partial-ads-'));
+  try {
+    const config=configuredProperty(root);
+    const settings=JSON.parse(readFileSync(config,'utf8'));
+    settings.monetization.aads={units:['12345'],footer:'12345'};
+    writeFileSync(config,JSON.stringify(settings));
+    const result=run([config,join(root,'public'),'--as-of',instant]);
+    assert.equal(result.status,0,result.stderr);
+    const html=readFileSync(join(root,'public','index.html'),'utf8');
+    assert.match(html,/data-slot="header"[^>]+data-ad-server="https:\/\/ads\.561\.group"/u);
+    assert.match(html,/data-aa="12345"/u);
+    assert.match(html,/referrerpolicy="no-referrer"/u);
+  } finally {rmSync(root,{recursive:true,force:true});}
+});
