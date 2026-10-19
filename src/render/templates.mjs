@@ -96,7 +96,7 @@ function adSlot(property, position, post) {
   if (!/^\d+$/u.test(unit) || !aads.units?.includes(unit)) throw new Error(`unrecognized A-Ads unit: ${unit}`);
   const loading = position === "footer" ? ' loading="lazy"' : "";
   return `<aside class="ad-slot ad-slot--paid" aria-label="Advertisement"><span class="ad-slot__label">Advertisement</span>` +
-    `<iframe data-aa="${unit}" src="https://acceptable.a-ads.com/${unit}/?size=Adaptive" title="Advertisement"${loading} referrerpolicy="strict-origin-when-cross-origin"></iframe></aside>`;
+    `<iframe data-aa="${unit}" src="https://acceptable.a-ads.com/${unit}/?size=Adaptive" title="Advertisement"${loading} referrerpolicy="no-referrer"></iframe></aside>`;
 }
 
 function followFeeds(property) {
