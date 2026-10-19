@@ -1,6 +1,9 @@
 import { createPublicKey, verify } from "node:crypto";
 import {
   accessSync,
+  copyFileSync,
+  mkdtempSync,
+  rmSync,
   closeSync,
   constants,
   existsSync,
@@ -16,6 +19,8 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { commandFailure } from "./release-diagnostics.mjs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { canonicalJson } from "@red-cup-engineering/json-services-section/canonical-json";
@@ -75,7 +80,20 @@ function retryableProbeError(error) {
 }
 /** The pinned Wrangler runs under the carrier's own Node runtime, never whichever `node` a host PATH names first. */
 export function runPinnedWrangler(program, args, { environment = process.env } = {}) {
-  return spawnSync(process.execPath, [program, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: environment });
+  // Wrangler writes state beside its configuration. Installed programs remain
+  // immutable; each invocation receives a separate writable working directory.
+  const workspace = mkdtempSync(join(tmpdir(), "koios-wrangler-"));
+  try {
+    const invocation = [...args], config = invocation.indexOf("--config");
+    if (config >= 0 && invocation[config + 1] === WRANGLER_STATIC_CONFIG) {
+      verifyStaticAssetConfig();
+      const writableConfig = join(workspace, "wrangler.json");
+      copyFileSync(WRANGLER_STATIC_CONFIG, writableConfig);
+      invocation[config + 1] = writableConfig;
+    }
+    return spawnSync(process.execPath, [program, ...invocation], { cwd: workspace,
+      encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: environment });
+  } finally { rmSync(workspace, { recursive: true, force: true }); }
 }
 export function verifyPinnedWrangler() {
   const packageRoot = fileURLToPath(new URL("../", import.meta.url)),
@@ -1104,7 +1122,12 @@ export async function executeObservedAuthorized(
     before = providerDeployments(run(readbackCommand.program, readbackCommand.args, { environment }), { allowAbsent: phase === "preview" }),
     authorityUsePath = consume(replayRoot, releasePlan);
   const deployed = run(deployment.program, deployment.args, { environment });
-  if (!deployed || deployed.status !== 0) throw new Error(`Cloudflare command failed after one-use authority consumption without exposing its output (status=${deployed?.status ?? "unknown"}, authorityUse=${authorityUsePath})`);
+  if (!deployed || deployed.status !== 0) throw commandFailure({
+    result: deployed, phase, environment, receiptOut,
+    attributes: { "koios.release.authority_use.path": authorityUsePath,
+      "koios.release.candidate.sha256": releasePlan.candidate.manifestSha256,
+      "koios.release.worker.name": deployedName },
+  });
   const after = providerDeployments(run(readbackCommand.program, readbackCommand.args, { environment })),
     provider = observedProviderDeployment(before, after);
   const candidate = { root: deployment.args[deployment.args.indexOf("--assets") + 1], manifestDigest: releasePlan.candidate.manifestSha256, manifestBytes: readFileSync(join(deployment.args[deployment.args.indexOf("--assets") + 1], "manifest.json")), manifest: verifyCandidate(deployment.args[deployment.args.indexOf("--assets") + 1]).manifest };

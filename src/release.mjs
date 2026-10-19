@@ -4,6 +4,7 @@ import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {auditProduction,planSelfAuthorized,executeObservedAuthorized,acceptPreviewProbe,observeProductionVersion,verifyBinding,TARGET,WRANGLER,runPinnedWrangler} from './carrier.mjs';
 import {observeRelease,readPublicBaseline} from './release-observation.mjs';
+import {retainReleaseFailure} from './release-diagnostics.mjs';
 
 /** Publish this website's immutable build through its existing preview and
  * rollback controls. The newsroom supplies inputs; the website owns delivery. */
@@ -40,5 +41,10 @@ export async function releaseWebsite({candidateDir,receipts,revision=process.env
   const release=await stage('release-plan',()=>planSelfAuthorized({phase:'release',candidateDir,bindingPath,rollbackPath:join(receipts,'rollback.json'),previewReceiptPath:join(receipts,'probe.json'),productionBaselinePath:join(receipts,'baseline.json')}));
   await stage('production-deploy-verify',()=>executeObservedAuthorized({phase:'release',plan:release,receiptOut:join(receipts,'release.json'),replayRoot:join(receipts,'authority'),url:'https://koios.news/'}));
   return {commit:revision,manifestSha256,publiclyVerified:true};
- },{revision});
+ },{revision,diagnose:(error,{phase,candidateManifestSha256})=>{
+   const diagnosticPath=error?.diagnosticPath??retainReleaseFailure({error,phase,
+    receiptOut:join(receipts,phase),attributes:candidateManifestSha256?{'koios.release.candidate.sha256':candidateManifestSha256}:{}});
+   if(error&&typeof error==='object')error.diagnosticPath=diagnosticPath;
+   return diagnosticPath;
+ }});
 }

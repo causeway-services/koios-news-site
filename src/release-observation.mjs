@@ -34,7 +34,7 @@ export async function readPublicBaseline({fetchImpl=fetch,wait=ms=>new Promise(r
  * Only a returned accepted receipt advances its effect witness. Cleanup failure
  * never replaces the original exception; both fixed classes appear in the report. */
 export async function observeRelease(operation,{emit=value=>console.error(JSON.stringify(value)),
- revision=process.env.GITHUB_SHA,runId=process.env.GITHUB_RUN_ID,runAttempt=process.env.GITHUB_RUN_ATTEMPT}={}){
+ diagnose,revision=process.env.GITHUB_SHA,runId=process.env.GITHUB_RUN_ID,runAttempt=process.env.GITHUB_RUN_ATTEMPT}={}){
  const binding={revision:identity(revision,/^[a-f0-9]{40}$/u),
   runId:identity(runId,/^[1-9][0-9]{0,19}$/u),runAttempt:identity(runAttempt,/^[1-9][0-9]{0,7}$/u)};
  const effects={preview:'not-attempted',production:'not-attempted'};
@@ -61,7 +61,12 @@ export async function observeRelease(operation,{emit=value=>console.error(JSON.s
    }
    if(name==='preview-cleanup')cleanupStatus='completed';
    report('completed');return result;
-  }catch(error){failedPhase=name;report('failed',{errorClass:errorClass(error)});throw error;}
+  }catch(error){
+   failedPhase=name;
+   let diagnosticPath;
+   try{diagnosticPath=diagnose?.(error,{phase:name,candidateManifestSha256});}catch{}
+   report('failed',{errorClass:errorClass(error),...(diagnosticPath?{diagnosticPath}:{})});throw error;
+  }
  };
  let result,failure,originalPhase,cleanupFailure,failed=false,cleanupFailed=false;
  try{

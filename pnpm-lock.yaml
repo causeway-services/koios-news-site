@@ -32,6 +32,9 @@ importers:
       '@red-cup-engineering/json-services-section':
         specifier: 0.4.0
         version: 0.4.0
+      '@red-cup-engineering/signcell':
+        specifier: 0.10.1
+        version: 0.10.1
       '@red-cup-engineering/web-theming-service':
         specifier: 0.0.7
         version: 0.0.7
@@ -634,6 +637,10 @@ packages:
     resolution: {integrity: sha512-fHoL1GrjGExKOuVosgLfUl0HK6WVQ1EZcOrR4LkC6XN6dUBbvOtA7n+mupaqvSSErWdDENL6SCPiiApgCaUOTQ==}
     hasBin: true
 
+  '@red-cup-engineering/computer-data-engineering-services-section@0.3.1':
+    resolution: {integrity: sha512-P8SMvW65n+jvHnQpI3lbIKsuMm8V3ilXZxUDKdccRd26gnF7s7w8aXb/ogdLIS+/qiEB+Mjj1Lm266K3cveGAw==}
+    hasBin: true
+
   '@red-cup-engineering/computer-file-engineering-services-section@0.4.0':
     resolution: {integrity: sha512-if1u0Rg+LYzi3Gq+ZPoqQTmwHoaX/5wHJB0egstMLQ/2V8PzEwvihQCXVx8TJIEoDpZcIGYeFwT1rGJDWOoGgQ==}
     engines: {node: '>=22'}
@@ -710,6 +717,10 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
+  '@red-cup-engineering/metrologic@0.13.0':
+    resolution: {integrity: sha512-JDL+tHet8nelmUENKnpHzHxe6xirVowOyK4owG4RzyI+/jFUpr5bj/TBmnZxAGCfU1njkAC+gY9gyrDTJWwHzw==}
+    engines: {node: '>=22'}
+
   '@red-cup-engineering/metrologic@0.4.0':
     resolution: {integrity: sha512-GiPwFJbSA3zsBKAHDcHQvrFlg/WXaNOpc1EMU6xl6h0Pwnz/ROSB/2sl0MfTuZCcbvuX2vCd7ectdbl1Ugi65A==}
     engines: {node: '>=22'}
@@ -726,12 +737,25 @@ packages:
     resolution: {integrity: sha512-ITCIrnjLU/P30VmiDQvZhfYSz00BZ5z/H7IHi30IbPbSiAjEk7jLHaUm04iGb5pBVEXj+qiASotfbfJJUy6hgA==}
     engines: {node: '>=22'}
 
+  '@red-cup-engineering/semiotic-content-address@0.1.0':
+    resolution: {integrity: sha512-5+Rap5Ya8biH9nRzVl4HadfIuNomBYfxdDtV7Ly35wvTPrEYrglXZRuXY9Mg0vGQXruTrlBzxaAiYQUXvgyIaQ==}
+    engines: {node: '>=22'}
+    hasBin: true
+
+  '@red-cup-engineering/semiotic-content-address@0.1.1':
+    resolution: {integrity: sha512-tNwjWDw+7bNjda5MoMRF7vZYxWgS2ZFxvkVCH4hYWPPSgKkhRw19zOLlJsl81WN3d3xnlo1J59GbIFH2frUjgQ==}
+    engines: {node: '>=22'}
+    hasBin: true
+
   '@red-cup-engineering/semiotic-eavt-services-section@0.1.0':
     resolution: {integrity: sha512-+zq+xoFolw5Jpg5IbLJT/hcAEECizywCOiqwy18jyzw+bS3HzmsMlZ2z+VOomPnxiq9nKWQLg1rV4ZG013wxnQ==}
     engines: {node: '>=22'}
 
   '@red-cup-engineering/signcell@0.1.0':
     resolution: {integrity: sha512-eYqt+s09XLX4CcG/kqmIo1n1coKSFOoIN6pR2G20lKd1rhBJt8yuyx5KKKlZfAyeJei2QWNxZRtz3DPQLIqohQ==}
+
+  '@red-cup-engineering/signcell@0.10.1':
+    resolution: {integrity: sha512-HZk8yDDA9Xbgz3SGCRBLLaNn2rpZoiqs64O5R8BSBxDmkjJ351j1gl66Ltzsyjg/4MlgPO5kcWyin8NdNVcBTQ==}
 
   '@red-cup-engineering/signcell@0.2.0':
     resolution: {integrity: sha512-SE91f1OrKZ566DZj2U/EFpRLUYi+6vDFPkU3lzWS9qAijd1r7lfn6sla1qRKrOMqUYBCo74IZzVHmvb4FFRInw==}
@@ -1365,6 +1389,15 @@ snapshots:
       '@red-cup-engineering/json-services-section': 0.4.0
       '@red-cup-engineering/uri-services-section': 0.1.1
 
+  '@red-cup-engineering/computer-data-engineering-services-section@0.3.1':
+    dependencies:
+      '@red-cup-engineering/cbor-services-section': 0.1.1
+      '@red-cup-engineering/cryptographic-computer-data-engineering-services-section': 0.3.1
+      '@red-cup-engineering/exact-number-data-service': 0.1.1
+      '@red-cup-engineering/json-services-section': 0.4.0
+      '@red-cup-engineering/semiotic-content-address': 0.1.0
+      '@red-cup-engineering/uri-services-section': 0.1.1
+
   '@red-cup-engineering/computer-file-engineering-services-section@0.4.0':
     dependencies:
       '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
@@ -1540,6 +1573,12 @@ snapshots:
       '@red-cup-engineering/uri-services-section': 0.1.1
       '@red-cup-engineering/yaml-frontmatter-codec-service': 0.1.8
 
+  '@red-cup-engineering/metrologic@0.13.0':
+    dependencies:
+      '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
+      '@red-cup-engineering/exact-number-data-service': 0.1.1
+      '@red-cup-engineering/json-services-section': 0.4.0
+
   '@red-cup-engineering/metrologic@0.4.0':
     dependencies:
       '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
@@ -1561,6 +1600,18 @@ snapshots:
     dependencies:
       '@red-cup-engineering/split-markdown-frontmatter-fence-service': 0.2.0
 
+  '@red-cup-engineering/semiotic-content-address@0.1.0':
+    dependencies:
+      '@red-cup-engineering/cbor-services-section': 0.1.1
+      '@red-cup-engineering/cryptographic-computer-data-engineering-services-section': 0.3.1
+      '@red-cup-engineering/uri-services-section': 0.1.1
+
+  '@red-cup-engineering/semiotic-content-address@0.1.1':
+    dependencies:
+      '@red-cup-engineering/cbor-services-section': 0.1.1
+      '@red-cup-engineering/cryptographic-computer-data-engineering-services-section': 0.3.1
+      '@red-cup-engineering/uri-services-section': 0.1.1
+
   '@red-cup-engineering/semiotic-eavt-services-section@0.1.0':
     dependencies:
       '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
@@ -1578,6 +1629,14 @@ snapshots:
       '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
       '@red-cup-engineering/json-schema-services-section': 0.5.0
+
+  '@red-cup-engineering/signcell@0.10.1':
+    dependencies:
+      '@red-cup-engineering/cbor-services-section': 0.1.1
+      '@red-cup-engineering/computer-data-engineering-services-section': 0.3.1
+      '@red-cup-engineering/json-schema-services-section': 0.5.0
+      '@red-cup-engineering/metrologic': 0.13.0
+      '@red-cup-engineering/semiotic-content-address': 0.1.1
 
   '@red-cup-engineering/signcell@0.2.0':
     dependencies:
