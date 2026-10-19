@@ -22,6 +22,7 @@ test('received website resolves and executes its pinned tool in PNPM sibling lay
  mkdirSync(join(pkg,'src'),{recursive:true});
  copyFileSync(join(source,'src/carrier.mjs'),join(pkg,'src/carrier.mjs'));
  copyFileSync(join(source,'src/release-diagnostics.mjs'),join(pkg,'src/release-diagnostics.mjs'));
+ copyFileSync(join(source,'src/release-observation.mjs'),join(pkg,'src/release-observation.mjs'));
  copyFileSync(join(source,'package.json'),join(pkg,'package.json'));
  const suppliers=[['@red-cup-engineering/signcell','@red-cup-engineering/signcell/observability'],['wrangler','wrangler/package.json'],
   ['@red-cup-engineering/json-services-section','@red-cup-engineering/json-services-section/canonical-json'],

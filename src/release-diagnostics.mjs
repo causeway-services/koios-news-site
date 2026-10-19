@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs';
-import { otlpLogRecord, otlpLogs } from '@red-cup-engineering/signcell/observability';
+import { otlpLogRecord } from '@red-cup-engineering/signcell/observability';
+import { releaseLogPacket } from './release-observation.mjs';
 
 // Disclosure is decided at this provider boundary. SignCell owns the format;
 // the retained failure is evidence, never a deployment receipt or retry grant.
@@ -42,7 +43,7 @@ export function retainReleaseFailure({ error, phase, receiptOut, environment = p
       ...(exception.stack === undefined ? {} : { 'exception.stacktrace': exception.stack }),
       'koios.release.phase': phase, ...attributes,
     } });
-  const logs = otlpLogs({ serviceName: 'koios.news.website', scopeName: '@causeway-services/koios-news-site/release', records: [record] });
+  const {logs} = releaseLogPacket(record,{observedAt});
   writeFileSync(diagnosticPath, JSON.stringify(logs, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
   return diagnosticPath;
 }

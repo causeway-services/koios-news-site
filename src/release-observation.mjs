@@ -1,4 +1,26 @@
-// Fixed, value-free release progress. This observer cannot authorize or retry an effect.
+import { otlpLogRecord } from '@red-cup-engineering/signcell/observability';
+import { channel, message, packet, packetToOtlpLogs } from '@red-cup-engineering/signcell/signal';
+
+// The website supplies observed events; SignCell owns their common representation.
+// This observer cannot authorize or retry an effect.
+const releaseChannel=channel({name:'koios.website.release',resource:{'service.name':'koios.news.website'}});
+export function releaseLogPacket(record,{observedAt,causes=[]}){
+ const said=message({channel:releaseChannel,observedAt,causes,body:record});
+ return {message:said,logs:packetToOtlpLogs(packet({channel:releaseChannel,messages:[said]}),
+  {channel:releaseChannel,scopeName:'@causeway-services/koios-news-site/release'})};
+}
+const present=value=>Array.isArray(value)?value.map(present):value&&typeof value==='object'
+ ?Object.fromEntries(Object.entries(value).filter(([,v])=>v!==null&&v!==undefined).map(([k,v])=>[k,present(v)])):value;
+function releaseEmitter(){
+ let prior;
+ return value=>{
+  const observedAt=new Date().toISOString(),failed=value.status==='failed';
+  const record=otlpLogRecord({observedAt,severityNumber:failed?17:9,severityText:failed?'ERROR':'INFO',
+   eventName:'koios.website.release.phase',body:present(value)});
+  const emitted=releaseLogPacket(record,{observedAt,causes:prior?[prior]:[]});
+  console.error(JSON.stringify(emitted.logs));prior=emitted.message.id;
+ };
+}
 const PHASES=new Set(['baseline-read','candidate-read','already-live-audit','preview-plan',
  'preview-deploy-verify','preview-probe','rollback-binding','release-plan',
  'production-deploy-verify','preview-cleanup']);
@@ -33,10 +55,11 @@ export async function readPublicBaseline({fetchImpl=fetch,wait=ms=>new Promise(r
 /** A failed mutation-capable call stays unreconciled even if it changed a provider.
  * Only a returned accepted receipt advances its effect witness. Cleanup failure
  * never replaces the original exception; both fixed classes appear in the report. */
-export async function observeRelease(operation,{emit=value=>console.error(JSON.stringify(value)),
+export async function observeRelease(operation,{emit,
  diagnose,revision=process.env.GITHUB_SHA,runId=process.env.GITHUB_RUN_ID,runAttempt=process.env.GITHUB_RUN_ATTEMPT}={}){
  const binding={revision:identity(revision,/^[a-f0-9]{40}$/u),
   runId:identity(runId,/^[1-9][0-9]{0,19}$/u),runAttempt:identity(runAttempt,/^[1-9][0-9]{0,7}$/u)};
+ emit??=releaseEmitter();
  const effects={preview:'not-attempted',production:'not-attempted'};
  let candidateManifestSha256=null,phase=null,failedPhase=null,cleanup,cleanupStatus='not-attempted';
  const report=(status,extra={})=>{

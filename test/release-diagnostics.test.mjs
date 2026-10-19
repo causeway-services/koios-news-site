@@ -23,6 +23,8 @@ test('failed publication retains full redacted OTLP evidence and remains unrecon
   const logs = JSON.parse(bytes), record = logs.resourceLogs[0].scopeLogs[0].logRecords[0];
   assert.equal(record.severityNumber, 17);
   assert.equal(record.eventName, 'koios.website.release.failure');
+  const keys=record.attributes.map(a=>a.key);
+  for(const key of ['semioverse.channel.id','semioverse.message.id','semioverse.packet.id'])assert.equal(keys.includes(key),true);
   assert.equal('traceId' in record, false);
   assert.equal('timeUnixNano' in record, false);
   assert.match(record.observedTimeUnixNano, /^\d+$/);
@@ -33,4 +35,18 @@ test('failed publication retains full redacted OTLP evidence and remains unrecon
   assert.equal(attempts, 1);
   assert.equal(events.at(-1).effects.preview, 'attempted-unreconciled');
   assert.equal(events.some(e => e.diagnosticPath === error.diagnosticPath), true);
+});
+
+test('ordinary release progress uses the shared channel, message and packet representation',async()=>{
+ const emitted=[],prior=console.error;console.error=line=>emitted.push(JSON.parse(line));
+ try{await observeRelease(async({stage})=>stage('candidate-read',()=>({read:true})));}
+ finally{console.error=prior;}
+ assert.equal(emitted.length,3);
+ const records=emitted.flatMap(request=>request.resourceLogs.flatMap(resource=>resource.scopeLogs.flatMap(scope=>scope.logRecords)));
+ assert.equal(records.length,3);
+ const attributes=records.map(record=>Object.fromEntries(record.attributes.map(a=>[a.key,a.value.stringValue])));
+ assert.equal(new Set(attributes.map(a=>a['semioverse.channel.id'])).size,1);
+ assert.equal(new Set(attributes.map(a=>a['semioverse.message.id'])).size,3);
+ assert.equal(records.every(record=>record.eventName==='koios.website.release.phase'),true);
+ assert.equal(records.some(record=>'traceId' in record),false);
 });
