@@ -88,10 +88,10 @@ function houseAdSlot(property, position, context = []) {
 function adSlot(property, position, post) {
   const aads = property.monetization?.aads;
   if (!aads) return houseAdSlot(property, position);
-  const candidates = position === "inArticle" ? aads.inArticle : aads[position] == null ? [] : [aads[position]];
-  if (!Array.isArray(candidates) || candidates.length === 0) return houseAdSlot(property, position);
   const assigned = post?.adUnit;
-  const index = post ? [...post.slug].reduce((sum, character) => sum + character.codePointAt(0), 0) % candidates.length : 0;
+  const candidates = position === "inArticle" ? aads.inArticle : aads[position] == null ? [] : [aads[position]];
+  if (assigned == null && (!Array.isArray(candidates) || candidates.length === 0)) return houseAdSlot(property, position);
+  const index = assigned == null && post ? [...post.slug].reduce((sum, character) => sum + character.codePointAt(0), 0) % candidates.length : 0;
   const unit = assigned ?? candidates[index];
   if (!/^\d+$/u.test(unit) || !aads.units?.includes(unit)) throw new Error(`unrecognized A-Ads unit: ${unit}`);
   const loading = position === "footer" ? ' loading="lazy"' : "";
