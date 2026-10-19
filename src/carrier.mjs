@@ -17,15 +17,18 @@ import {
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { canonicalJson } from "@red-cup-engineering/json-services-section/canonical-json";
 import { sha256Hex } from "@red-cup-engineering/cryptographic-computer-data-engineering-services-section/integrity";
 
 export const WRANGLER_VERSION = "4.127.1";
 export const CLOUDFLARE_COMPATIBILITY_DATE = "2026-08-29";
 export const RELEASE_PROBE_USER_AGENT = "Mozilla/5.0 (compatible; KoiosNewsReleaseCheck/1.0)";
-export const WRANGLER = fileURLToPath(
-  new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url),
-);
+// Dependencies are resolved through Node, including PNPM's sibling supplier
+// layout. A package need not have a private nested node_modules directory.
+const require = createRequire(import.meta.url);
+const WRANGLER_PACKAGE = require.resolve("wrangler/package.json");
+export const WRANGLER = join(dirname(WRANGLER_PACKAGE), "bin/wrangler.js");
 const WRANGLER_STATIC_CONFIG = fileURLToPath(
   new URL("../release/wrangler-static-assets.json", import.meta.url),
 );
@@ -77,7 +80,7 @@ export function runPinnedWrangler(program, args, { environment = process.env } =
 export function verifyPinnedWrangler() {
   const packageRoot = fileURLToPath(new URL("../", import.meta.url)),
     carrierPackagePath = join(packageRoot, "package.json"),
-    packageJsonPath = join(packageRoot, "node_modules", "wrangler", "package.json"),
+    packageJsonPath = WRANGLER_PACKAGE,
     carrierPackage = readJson(carrierPackagePath, "Cloudflare carrier package").value,
     packageJson = readJson(packageJsonPath, "installed Wrangler package").value;
   if (
