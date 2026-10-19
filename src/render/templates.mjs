@@ -88,7 +88,7 @@ function houseAdSlot(property, position, context = []) {
 function adSlot(property, position, post) {
   const aads = property.monetization?.aads;
   if (!aads) return houseAdSlot(property, position);
-  const candidates = position === "inArticle" ? aads.inArticle : [aads[position]];
+  const candidates = position === "inArticle" ? aads.inArticle : aads[position] == null ? [] : [aads[position]];
   if (!Array.isArray(candidates) || candidates.length === 0) return houseAdSlot(property, position);
   const assigned = post?.adUnit;
   const index = post ? [...post.slug].reduce((sum, character) => sum + character.codePointAt(0), 0) % candidates.length : 0;
