@@ -28,6 +28,8 @@ test('the original two-argument build invocation remains supported',()=>{
     assert.match(index,/data-property="koios-news"/u,"ad slot uses the campaign catalog property key");
     const advertising=readFileSync(join(root,"public","advertise","index.html"),"utf8");
     assert.match(advertising,/First-party contextual placements/u);
+    assert.match(advertising,/<link rel="canonical" href="https:\/\/koios\.news\/advertise\/"/u);
+    assert.match(advertising,/<meta name="description" content="See configured advertising channels and how to propose a contextual placement on Koios\.News, with independent editorial safeguards\."/u);
     assert.match(advertising,/https:\/\/561\.group\/contact\//u);
     assert.match(index,/<a href="\/advertise\/">Advertise<\/a>/u);
     const sitemap=readFileSync(join(root,"public","sitemap.xml"),"utf8");

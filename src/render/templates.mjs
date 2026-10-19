@@ -587,9 +587,9 @@ export function renderMastheadPage(property) {
 }
 
 /** Render a static text page with already-escaped body HTML. */
-export function renderStaticPage(property, title, path, bodyHtml) {
+export function renderStaticPage(property, title, path, bodyHtml, { description = title } = {}) {
   const body = `<h1>${esc(title)}</h1>${bodyHtml}`;
-  const headCtx = { title: `${title} – ${property.name}`, description: title, canonical: url(property, path), siteName: property.name };
+  const headCtx = { title: `${title} – ${property.name}`, description, canonical: url(property, path), siteName: property.name };
   return documentShell(property, headCtx, body);
 }
 

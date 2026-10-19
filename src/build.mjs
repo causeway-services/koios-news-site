@@ -893,7 +893,8 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
     `<p>The publication carries advertising and offers a paid briefing. See ${hasAdvertisingInventory(property) ? '<a href="/advertise/">how to advertise</a>, ' : ''}our <a href="/standards/">editorial standards</a>, <a href="/corrections/">corrections</a>, and <a href="/masthead/">coverage desks</a>.</p>`));
   if (hasAdvertisingInventory(property)) {
     set("advertise/index.html", renderStaticPage(property,
-      `Advertise on ${property.name}`, "/advertise/", renderAdvertisingSales(property)));
+      `Advertise on ${property.name}`, "/advertise/", renderAdvertisingSales(property),
+      { description: `See configured advertising channels and how to propose a contextual placement on ${property.name}, with independent editorial safeguards.` }));
   }
   set("privacy/index.html", renderStaticPage(property, "Privacy", "/privacy/",
     `<p>This site does not build reader profiles or store reader identifiers for advertising.</p>${property.monetization?.houseAds?.server ?
