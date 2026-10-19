@@ -3,12 +3,11 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,copyFileSync,symlinkSync,readFileSync,rmSync,realpathSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
-import {createRequire} from 'node:module';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 
-const require=createRequire(import.meta.url), source=dirname(dirname(fileURLToPath(import.meta.url)));
+const source=dirname(dirname(fileURLToPath(import.meta.url)));
 function packageRoot(name,entry){
-  let path=dirname(require.resolve(entry));
+  let path=dirname(fileURLToPath(import.meta.resolve(entry)));
   while(path!==dirname(path)){
     try{if(JSON.parse(readFileSync(join(path,'package.json'),'utf8')).name===name)return path;}catch{}
     path=dirname(path);
