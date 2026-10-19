@@ -97,6 +97,44 @@ export function mountHouseAds() {
             el.appendChild(notice);
           }
         }
+        // A fetched creative is not an impression. After the full disclosure
+        // and link exist, report only a continuous 1s opportunity in which at
+        // least half the placement is in a visible document. These unsigned
+        // client readings are never verified human or billable impressions.
+        if (typeof IntersectionObserver === "function") {
+          let visible = false, reported = false, pending = null;
+          const cancel = () => {
+            if (pending !== null) clearTimeout(pending);
+            pending = null;
+          };
+          const submit = () => {
+            pending = null;
+            if (reported || !visible || document.visibilityState !== "visible") return;
+            reported = true;
+            const viewArgs = args + "&creative=" + encodeURIComponent(creative.id);
+            fetch(origin + "/view?" + viewArgs, {
+              method: "POST", credentials: "omit", keepalive: true,
+            }).catch(() => { /* Failed telemetry is not a billable view. */ });
+          };
+          const schedule = () => {
+            if (!reported && pending === null && visible &&
+                document.visibilityState === "visible") {
+              pending = setTimeout(submit, 1000);
+            }
+          };
+          const observer = new IntersectionObserver((entries) => {
+            const entry = entries.find(value => value.target === el);
+            if (!entry) return;
+            visible = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+            if (visible) schedule();
+            else cancel();
+          }, { threshold: [0, 0.5] });
+          observer.observe(el);
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") schedule();
+            else cancel();
+          });
+        }
       }).catch(() => { /* No ad is safer than an inaccurate ad. */ });
   }
 }

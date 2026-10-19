@@ -111,3 +111,107 @@ test("a missing relationship cannot silently convert a third-party ad into a hou
   const {host}=await render({id:"paid-looking",title:"A purported offer",disclosure:"Paid"});
   assert.deepEqual(host.children,[]);
 });
+
+async function observedPlacement({ creative: offered, context = "science", supportObserver = true } = {}) {
+  const host = element("div");
+  host.dataset = { adServer: "https://ads.561.group", slot: "afterArticle", property: "koios-news", context };
+  let clock = 0, nextTimer = 1, observer = null;
+  const timers = new Map(), requests = [], listeners = new Map();
+  const doc = {
+    visibilityState: "visible",
+    querySelectorAll: () => [host],
+    createElement: element,
+    createTextNode: textContent => ({ tagName:"#text", textContent }),
+    addEventListener: (type, fn) => listeners.set(type, fn),
+  };
+  class Observer {
+    constructor(callback, options) {
+      observer = {callback, options};
+    }
+    observe(target) { assert.equal(target, host); }
+  }
+  const globals = { document: doc, URL, encodeURIComponent, Date, Number, Set, Array,
+    setTimeout: (fn, delay) => {
+      const id = nextTimer++;
+      timers.set(id, { fn, at: clock + delay });
+      return id;
+    },
+    clearTimeout: id => timers.delete(id),
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return { ok:true, json:async()=>({ creative: offered }) };
+    },
+  };
+  if (supportObserver) globals.IntersectionObserver = Observer;
+  runInNewContext(houseAdClientScript(), globals);
+  await new Promise(resolve => setImmediate(resolve));
+  return {
+    host, requests, timers,
+    observer: () => observer,
+    emit(ratio) {
+      observer.callback([{target:host,isIntersecting:ratio>0,intersectionRatio:ratio}]);
+    },
+    advance(ms) {
+      clock += ms;
+      for (const [id, timer] of [...timers]) {
+        if (timer.at <= clock) { timers.delete(id); timer.fn(); }
+      }
+    },
+    hide() { doc.visibilityState = "hidden"; listeners.get("visibilitychange")?.(); },
+    show() { doc.visibilityState = "visible"; listeners.get("visibilitychange")?.(); },
+  };
+}
+
+test("a fetched creative does not count as a view until actually visible for one continuous second", async () => {
+  const case1 = await observedPlacement({creative:{id:"book",title:"A book",relationship:"house"}});
+  assert.equal(case1.requests.length,1);
+  assert.match(case1.requests[0].url,/\/ad\?/u);
+  assert.deepEqual(case1.observer().options.threshold,[0,0.5]);
+  case1.emit(0.49);
+  case1.advance(1100);
+  assert.equal(case1.requests.length,1);
+  case1.emit(0.5);
+  case1.advance(999);
+  assert.equal(case1.requests.length,1);
+  case1.emit(0.2);
+  case1.advance(2000);
+  assert.equal(case1.requests.length,1);
+  case1.emit(0.8);
+  case1.advance(1000);
+  assert.equal(case1.requests.length,2);
+  assert.equal(case1.requests[1].options.method,"POST");
+  assert.equal(case1.requests[1].options.credentials,"omit");
+  assert.match(case1.requests[1].url,/\/view\?slot=afterArticle&property=koios-news&context=science&creative=book$/u);
+  case1.emit(0);
+  case1.emit(0.9);
+  case1.advance(2000);
+  assert.equal(case1.requests.length,2,"one view at most for each displayed creative");
+});
+
+test("hidden documents cancel pending view reports until continuous visible duration resumes", async () => {
+  const placement=await observedPlacement({creative:{id:"book",title:"A book",relationship:"house"}});
+  placement.emit(0.9);
+  placement.advance(500);
+  placement.hide();
+  placement.advance(800);
+  assert.equal(placement.requests.length,1);
+  placement.show();
+  placement.advance(1000);
+  assert.equal(placement.requests.length,2);
+});
+
+test("without an available browser observer no impression is invented",async()=>{
+  const placement=await observedPlacement({creative:{id:"book",title:"A book",relationship:"house"},supportObserver:false});
+  assert.equal(placement.observer(),null);
+  assert.equal(placement.requests.length,1);
+});
+
+test("invalid paid creatives are neither rendered nor observed",async()=>{
+  const placement=await observedPlacement({creative:{
+    id:"merchant",title:"Sponsored",relationship:"sponsored",disclosure:"Paid.",
+    linkRel:"sponsored nofollow",allowedContexts:["unrelated"],expiresAt:"2099-01-01T00:00:00Z",
+  }});
+  assert.equal(placement.host.children.length,0);
+  assert.equal(placement.observer(),null);
+  assert.equal(placement.requests.length,1);
+});
