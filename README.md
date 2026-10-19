@@ -187,8 +187,6 @@ https://developers.cloudflare.com/workers/static-assets/headers/ and the zone
 pricing distinction at
 https://developers.cloudflare.com/ai-crawl-control/features/pay-per-crawl/use-pay-per-crawl-as-site-owner/advanced-configuration/
 
-### Cloudflare Pay Per Crawl: eligibility and safe rollout
-
 Cloudflare's Pay Per Crawl is in **closed beta** as of 2026-10-13.
 Technical readiness is not enrollment; without the zone's authorized
 settings/Stripe flow and observed charging transactions, its status is
