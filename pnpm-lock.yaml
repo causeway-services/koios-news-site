@@ -20,6 +20,9 @@ importers:
       '@red-cup-engineering/cryptographic-computer-data-engineering-services-section':
         specifier: 0.3.1
         version: 0.3.1
+      '@red-cup-engineering/csl-json-services-section':
+        specifier: 0.2.2
+        version: 0.2.2
       '@red-cup-engineering/html-engineering-services-section':
         specifier: 0.1.4
         version: 0.1.4
