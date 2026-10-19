@@ -67,3 +67,19 @@ test('missing, repeated, unknown and malformed time options are rejected before 
     }
   } finally {rmSync(root,{recursive:true,force:true});}
 });
+
+test('advertising frames do not disclose the reader\'s article as referrer',()=>{
+  const root=mkdtempSync(join(tmpdir(),'koios-ad-privacy-'));
+  try {
+    const config=configuredProperty(root);
+    const settings=JSON.parse(readFileSync(config,'utf8'));
+    settings.monetization.aads={units:['12345'],header:'12345',footer:'12345',inArticle:['12345']};
+    writeFileSync(config,JSON.stringify(settings));
+    const result=run([config,join(root,'public'),'--as-of',instant]);
+    assert.equal(result.status,0,result.stderr);
+    const html=readFileSync(join(root,'public','index.html'),'utf8');
+    assert.match(html,/data-aa="12345"/);
+    assert.match(html,/referrerpolicy="no-referrer"/);
+    assert.doesNotMatch(html,/referrerpolicy="strict-origin-when-cross-origin"/);
+  } finally {rmSync(root,{recursive:true,force:true});}
+});
