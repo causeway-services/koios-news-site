@@ -24,6 +24,8 @@ test('the original two-argument build invocation remains supported',()=>{
     const result=run([configuredProperty(root),join(root,'public')]);
     assert.equal(result.status,0,result.stderr);
     assert.ok(JSON.parse(result.stdout).publishedPostCount>0);
+    const index=readFileSync(join(root,"public","index.html"),"utf8");
+    assert.match(index,/data-property="koios-news"/u,"ad slot uses the campaign catalog property key");
   } finally {rmSync(root,{recursive:true,force:true});}
 });
 

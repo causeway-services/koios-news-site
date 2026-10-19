@@ -33,45 +33,51 @@ export function mountHouseAds() {
         if (!creative || !["string", "number"].includes(typeof creative.id) || !String(creative.id).trim() ||
             typeof creative.title !== "string" || !creative.title) return;
 
-        // Unknown creative classes are never quietly treated as house ads.
-        const kind = creative.kind ?? "house";
-        if (kind !== "house" && kind !== "referral") return;
-        if (kind === "referral") {
-          // The server must declare and warrant this relationship and the
-          // offer-specific eligibility/risk warnings. Incomplete ads fail shut.
-          for (const field of ["disclosure", "eligibility", "riskNotice"]) {
-            if (typeof creative[field] !== "string" || !creative[field].trim()) return;
-          }
+        // Consume the original ad server's canonical relationship, not an
+        // unrelated "kind" default that could mislabel a paid ad as house.
+        const relationship = creative.relationship;
+        if (!["house", "affiliate", "sponsored"].includes(relationship)) return;
+        const paid = relationship !== "house";
+        if (paid) {
+          if (typeof creative.disclosure !== "string" || !creative.disclosure.trim() ||
+              typeof creative.linkRel !== "string" ||
+              !creative.linkRel.split(/\s+/u).includes("sponsored")) return;
           const pageContexts = new Set(context.split(",").filter(Boolean));
           if (!Array.isArray(creative.allowedContexts) ||
-              !creative.allowedContexts.some((term) =>
+              !creative.allowedContexts.some(term =>
                 typeof term === "string" && pageContexts.has(term))) return;
           if (typeof creative.expiresAt !== "string" ||
               !Number.isFinite(Date.parse(creative.expiresAt)) ||
               Date.parse(creative.expiresAt) <= Date.now()) return;
+          if (relationship === "affiliate") {
+            for (const field of ["eligibility", "riskNotice"]) {
+              if (typeof creative[field] !== "string" || !creative[field].trim()) return;
+            }
+          }
         }
 
         const label = document.createElement("span");
         label.className = "ad-slot__label";
-        label.textContent = kind === "referral" ? "Advertisement · Referral offer" : "From the publisher";
+        label.textContent = relationship === "affiliate" ? "Advertisement · Referral offer" : paid ? "Advertisement" : "From the publisher";
         el.appendChild(label);
 
         // Put the paid material-connection disclosure BEFORE the link so it
         // is visible at the decision point, not buried in a site-wide footer.
-        if (kind === "referral") {
+        if (paid) {
           el.setAttribute("role", "complementary");
-          el.setAttribute("aria-label", "Referral advertisement");
+          el.setAttribute("aria-label", relationship === "affiliate" ? "Referral advertisement" : "Advertisement");
           const disclosure = document.createElement("p");
           disclosure.className = "ad-slot__disclosure";
-          disclosure.textContent = "The publisher may receive a referral reward when you use this offer. " + creative.disclosure;
+          disclosure.textContent = relationship === "affiliate" ? "The publisher may receive a referral reward when you use this offer. " + creative.disclosure : creative.disclosure;
           el.appendChild(disclosure);
         }
 
         const link = document.createElement("a");
         link.href = origin + "/click?slot=" + encodeURIComponent(slot) +
           "&property=" + encodeURIComponent(property) +
-          "&creative=" + encodeURIComponent(creative.id);
-        link.rel = "sponsored noopener noreferrer";
+          "&creative=" + encodeURIComponent(creative.id) +
+          (paid ? "&context=" + encodeURIComponent(context) : "");
+        link.rel = paid ? "sponsored nofollow noopener noreferrer" : "noopener noreferrer";
         const title = document.createElement("strong");
         title.textContent = creative.title;
         link.appendChild(title);
@@ -80,7 +86,7 @@ export function mountHouseAds() {
         }
         el.appendChild(link);
 
-        if (kind === "referral") {
+        if (relationship === "affiliate") {
           for (const [field, className] of [
             ["eligibility", "ad-slot__eligibility"],
             ["riskNotice", "ad-slot__risk"]

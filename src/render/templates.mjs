@@ -81,7 +81,7 @@ function houseAdSlot(property, position, context = []) {
   // server so it can prefer a fitting house product; nothing about the reader does.
   const contexts = context.filter((value) => typeof value === "string" && value !== "").slice(0, 8).map((value) => slugify(value));
   const contextAttribute = contexts.length > 0 ? ` data-context="${esc(contexts.join(","))}"` : "";
-  return `<div class="ad-slot ad-slot--house" data-slot="${esc(position)}" data-property="${esc(property.name)}" data-ad-server="${esc(server)}"${contextAttribute}></div>`;
+  return `<div class="ad-slot ad-slot--house" data-slot="${esc(position)}" data-property="${esc(slugify(property.name))}" data-ad-server="${esc(server)}"${contextAttribute}></div>`;
 }
 
 function adSlot(property, position, post) {
