@@ -99,3 +99,23 @@ test('unassigned paid slots use the original house inventory without aborting th
     assert.match(html,/referrerpolicy="no-referrer"/u);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
+
+test('an individually authorized article ad remains usable without a generic in-article unit',()=>{
+  const root=mkdtempSync(join(tmpdir(),'koios-article-ad-'));
+  try {
+    const config=configuredProperty(root);
+    const settings=JSON.parse(readFileSync(config,'utf8'));
+    settings.monetization.aads={
+      units:['2382512'],
+      verification:{slug:'hello-world',historicalArticleUnit:'2382512'}
+    };
+    writeFileSync(config,JSON.stringify(settings));
+    const result=run([config,join(root,'public'),'--as-of',instant]);
+    assert.equal(result.status,0,result.stderr);
+    const original=readFileSync(join(root,'public','2025','02','15','hello-world','index.html'),'utf8');
+    assert.match(original,/data-aa="2382512"/u);
+    assert.match(original,/referrerpolicy="no-referrer"/u);
+    const home=readFileSync(join(root,'public','index.html'),'utf8');
+    assert.match(home,/data-slot="header"[^>]+data-ad-server="https:\/\/ads\.561\.group"/u);
+  } finally {rmSync(root,{recursive:true,force:true});}
+});
