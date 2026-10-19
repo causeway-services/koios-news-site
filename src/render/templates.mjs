@@ -8,6 +8,7 @@
  */
 import { slugify } from "@red-cup-engineering/computer-text-content-engineering-services-section/slugify-text";
 import { escapeHtml } from "./markdown.mjs";
+import { hasAdvertisingInventory } from "./advertising-sales.mjs";
 import { renderHeadTags, newsArticleJsonLd, newsMediaOrganizationJsonLd, absoluteUrl } from "./head.mjs";
 
 const PAGE_SIZE = 12;
@@ -140,7 +141,7 @@ function siteFooter(property, options = {}) {
   const links = [
     '<a href="/about/">About</a>', '<a href="/masthead/">Masthead</a>', '<a href="/standards/">Standards</a>',
     '<a href="/corrections/">Corrections</a>', '<a href="/about/#ownership">Ownership</a>', '<a href="/privacy/">Privacy</a>',
-    property.monetization?.aads ? '<a href="/advertise/">Advertise</a>' : '',
+    hasAdvertisingInventory(property) ? '<a href="/advertise/">Advertise</a>' : '',
     property.content?.sourceFeeds ? '<a href="/sources/">Newsroom sources</a>' : '',
     '<a href="/archive/">Archive</a>', '<a href="/bibliography/">Article citations</a>',
     '<a href="/feed.xml">RSS</a>', '<a href="/feed.atom">Atom</a>', '<a href="/feed.json">JSON Feed</a>',

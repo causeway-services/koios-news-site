@@ -25,6 +25,7 @@ import { renderSitemap, renderNewsSitemap, renderRobotsTxt, renderAdsTxt } from 
 import { buildSearchIndex, searchClientScript } from "./render/search-index.mjs";
 import { shareClientScript } from "./render/share-client.mjs";
 import { houseAdClientScript } from "./render/house-ad-client.mjs";
+import { hasAdvertisingInventory, renderAdvertisingSales } from "./render/advertising-sales.mjs";
 import { renderClaimArchive } from "./render/claim-archive.mjs";
 import { renderCorrectionsHtml } from "./render/corrections.mjs";
 import { selectArticleHeroImage } from "./render/hero-policy.mjs";
@@ -889,18 +890,14 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
     `<p>${property.name} is a news publication of ${escapeHtml(publisherName)}.</p>` +
     `<h2 id="ownership">Ownership and funding</h2><p>${escapeHtml(property.name)} is owned and published by The 561 Group. ${escapeHtml(fundingDisclosure)}</p>` +
     `<h2>How we publish</h2><p>${escapeHtml(editorialMethod)}</p>` +
-    `<p>The publication carries advertising and offers a paid briefing. See ${property.monetization?.aads?.units?.length ? '<a href="/advertise/">how to advertise</a>, ' : ''}our <a href="/standards/">editorial standards</a>, <a href="/corrections/">corrections</a>, and <a href="/masthead/">coverage desks</a>.</p>`));
-  if (property.monetization?.aads?.units?.length) {
-    const units = property.monetization.aads.units;
-    const unitList = units.map((unit) => `<li><a href="https://aads.com/ad_units/${encodeURIComponent(unit)}">AADS unit ${escapeHtml(unit)}</a></li>`).join("");
-    set("advertise/index.html", renderStaticPage(property, `Advertise on ${property.name}`, "/advertise/",
-      `<p>${escapeHtml(property.name)} carries advertising alongside its articles. Advertisers can buy placement through <a href="https://aads.com/">AADS</a>; ${escapeHtml(property.name)} does not take payment for these units directly.</p>` +
-      `<p>To target this publication, create an AADS campaign and add these ad units under Campaign → Targeting → Add Ad Units:</p><ul>${unitList}</ul>` +
-      `<p>The units appear at the top and bottom of pages and within articles. Placement and delivery depend on AADS campaign settings and available impressions. <a href="https://help.aads.com/en/article/how-to-adjust-campaign-targeting-1f1uxah/">AADS explains campaign targeting</a>.</p>` +
-      `<p>Advertising does not buy editorial coverage. Our <a href="/standards/">editorial standards</a> and <a href="/corrections/">corrections policy</a> apply independently of advertisers.</p>`));
+    `<p>The publication carries advertising and offers a paid briefing. See ${hasAdvertisingInventory(property) ? '<a href="/advertise/">how to advertise</a>, ' : ''}our <a href="/standards/">editorial standards</a>, <a href="/corrections/">corrections</a>, and <a href="/masthead/">coverage desks</a>.</p>`));
+  if (hasAdvertisingInventory(property)) {
+    set("advertise/index.html", renderStaticPage(property,
+      `Advertise on ${property.name}`, "/advertise/", renderAdvertisingSales(property)));
   }
   set("privacy/index.html", renderStaticPage(property, "Privacy", "/privacy/",
-    `<p>This site does not build reader profiles or store reader identifiers for advertising.</p>${property.monetization?.aads ?
+    `<p>This site does not build reader profiles or store reader identifiers for advertising.</p>${property.monetization?.houseAds?.server ?
+      `<p>When a first-party house-ad slot loads, the browser requests a creative from the configured ad server with the slot and page topic. The server receives an ordinary HTTP request but chooses the creative without a reader profile or behavioral targeting.</p>` : ""}${property.monetization?.aads ?
       `<p>Visible advertising placements load frames from A-Ads. That provider receives a request when a reader loads the frame; ${escapeHtml(property.name)} receives aggregate performance reports, not person-level ad data.</p>` : ""}`));
 
   set("search/index.html", renderSearchPage(property));

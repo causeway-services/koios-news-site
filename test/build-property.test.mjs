@@ -26,6 +26,14 @@ test('the original two-argument build invocation remains supported',()=>{
     assert.ok(JSON.parse(result.stdout).publishedPostCount>0);
     const index=readFileSync(join(root,"public","index.html"),"utf8");
     assert.match(index,/data-property="koios-news"/u,"ad slot uses the campaign catalog property key");
+    const advertising=readFileSync(join(root,"public","advertise","index.html"),"utf8");
+    assert.match(advertising,/First-party contextual placements/u);
+    assert.match(advertising,/https:\/\/561\.group\/contact\//u);
+    assert.match(index,/<a href="\/advertise\/">Advertise<\/a>/u);
+    const sitemap=readFileSync(join(root,"public","sitemap.xml"),"utf8");
+    assert.match(sitemap,/https:\/\/koios\.news\/advertise\//u);
+    const privacy=readFileSync(join(root,"public","privacy","index.html"),"utf8");
+    assert.match(privacy,/configured ad server with the slot and page topic/u);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
 
