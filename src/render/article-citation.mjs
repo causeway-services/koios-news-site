@@ -15,6 +15,6 @@ export function articleCitation(property, post) {
     url: new URL(`/posts/${post.slug}/`, property.origin).href,
     title: post.title, byline: [{ literal: post.author }],
     published: post.publishedAt ?? post.date,
-    publication: property.name, language: property.locale,
+    publication: property.name, language: property.language ?? property.locale?.replaceAll('_', '-'),
   }, projection);
 }

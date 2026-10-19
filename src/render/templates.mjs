@@ -448,7 +448,7 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
     articleSection: post.sectionTitle,
     articleTags: post.tags,
     citation: {title:post.title, author:post.author, published:post.publishedAt ?? post.date,
-      url:articleUrl, language:property.locale, publication:property.name,
+      url:articleUrl, language:property.language ?? property.locale?.replaceAll('_', '-'), publication:property.name,
       recordUrl:url(property, `/posts/${post.slug}/citation.json`)},
     jsonLd: newsArticleJsonLd({
       headline: post.title,
