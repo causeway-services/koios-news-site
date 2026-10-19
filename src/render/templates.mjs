@@ -422,6 +422,7 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
     navigation +
     `<div class="e-content">${post.bodyHtml}</div>` +
     sources +
+    `<p class="article-citation"><a href="/posts/${esc(post.slug)}/citation.json" download="${esc(post.slug)}.json">Cite this article (CSL-JSON)</a></p>` +
     houseAdSlot(property, "afterArticle", [post.section, ...(post.tags ?? [])]) +
     tags +
     renderLedgers(post.claims, post.omissions) +
@@ -446,6 +447,9 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
     articleModifiedTime: post.modified ?? post.publishedAt ?? post.date,
     articleSection: post.sectionTitle,
     articleTags: post.tags,
+    citation: {title:post.title, author:post.author, published:post.publishedAt ?? post.date,
+      url:articleUrl, language:property.locale, publication:property.name,
+      recordUrl:url(property, `/posts/${post.slug}/citation.json`)},
     jsonLd: newsArticleJsonLd({
       headline: post.title,
       url: articleUrl,

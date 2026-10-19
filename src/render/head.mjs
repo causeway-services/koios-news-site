@@ -186,6 +186,12 @@ export function renderHeadTags(ctx) {
     socialMetaTags(ctx),
     ctx.fediverseCreator ? `<meta name="fediverse:creator" content="${escapeHtml(ctx.fediverseCreator)}">` : "",
     ctx.actorUrl ? `<link rel="me" href="${escapeHtml(ctx.actorUrl)}">` : "",
+    ...(ctx.citation ? Object.entries({citation_title:ctx.citation.title,
+      citation_author:ctx.citation.author, citation_publication_date:ctx.citation.published?.slice(0,10).replaceAll('-','/'),
+      citation_public_url:ctx.citation.url, citation_language:ctx.citation.language,
+      citation_publisher:ctx.citation.publication}).filter(([,value])=>value).map(([name,value])=>
+        `<meta name="${name}" content="${escapeHtml(value)}">`) : []),
+    ctx.citation ? `<link rel="alternate" type="application/vnd.citationstyles.csl+json" title="Citation" href="${escapeHtml(ctx.citation.recordUrl)}">` : "",
     ctx.jsonLd ? jsonLdScript(ctx.jsonLd) : "",
   ];
   return parts.filter(Boolean).join("\n");

@@ -34,6 +34,7 @@ import {
   renderMastheadPage, renderStaticPage, renderSearchPage, render404Page,
 } from "./render/templates.mjs";
 import { slugify } from "@red-cup-engineering/computer-text-content-engineering-services-section/slugify-text";
+import { articleCitation } from "./render/article-citation.mjs";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/u;
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?$/u;
@@ -691,6 +692,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
   }
   set("coverage.json", renderCoverage(enriched, property));
   set("ninjs.json", renderNinjs(enriched, property, citationRenderer));
+  setJson("citations.json", enriched.map(post => articleCitation(property, post)));
   set("publication-provenance.json", renderPublicationProvenance(enriched, contentDir, property));
   for (const [path, contents] of renderSourceRoll(property, sourceFeedsPath, renderStaticPage)) set(path, contents);
 
@@ -718,6 +720,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
       outline: rendered.outline, readingMinutes: rendered.readingMinutes };
     feedPosts.push({ ...feedPost(post), contentHtml: renderSyndicatedArticle(property, renderedPost) });
     set(articlePath(post), renderArticlePage({ property, post: renderedPost, allPosts: enriched }));
+    setJson(`posts/${post.slug}/citation.json`, [articleCitation(property, post)]);
     if (post.slug === adVerification?.slug) {
       const verificationPath = `posts/${post.slug}.html`;
       set(verificationPath, renderArticlePage({ property, post: renderedPost, allPosts: enriched, noindex: true }));

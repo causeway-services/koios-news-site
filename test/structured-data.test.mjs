@@ -27,6 +27,20 @@ test("article structured data exposes accepted source citations", () => {
     const article = jsonLdObjects(html).find((object) => object["@type"] === "NewsArticle");
 
     assert.ok(article, "article page must include NewsArticle JSON-LD");
+    const records = JSON.parse(readFileSync(join(outputDir, "posts", "ai-compute-bottleneck-power-problem", "citation.json"), "utf8"));
+    assert.equal(records.length, 1);
+    const citation = records[0];
+    assert.equal(citation.type, "article-newspaper");
+    assert.equal(citation.URL, article.url);
+    assert.equal(citation.title, article.headline);
+    assert.deepEqual(citation.author, [{literal:article.author.name}]);
+    assert.deepEqual(citation.issued['date-parts'][0], article.datePublished.slice(0,10).split('-').map(Number));
+    assert.equal(citation.DOI, undefined);
+    assert.equal(citation.ISSN, undefined);
+    assert.match(html, /name="citation_title"/u);
+    assert.match(html, /name="citation_publication_date"/u);
+    assert.match(html, /Cite this article \(CSL-JSON\)/u);
+    assert.ok(JSON.parse(readFileSync(join(outputDir, "citations.json"), "utf8")).some(item=>item.id===citation.id));
     // Canonical page identity, public readability and source-controlled rights
     // must be projected into structured data, never guessed by an SEO bot.
     assert.deepEqual(article.mainEntityOfPage, { "@type": "WebPage",
