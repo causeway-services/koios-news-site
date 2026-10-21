@@ -467,7 +467,7 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
         name: post.author,
         url: url(property, `/authors/${post.authorSlug}/`),
       },
-      publisher: { name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") },
+      publisher: { "@id": url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") },
       description: post.description,
       articleSection: post.sectionTitle,
       keywords: post.keywords,
