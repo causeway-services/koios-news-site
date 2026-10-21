@@ -41,3 +41,21 @@ test("static trust pages disclose ownership, funding, and AI-assisted process", 
     rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+test("the shared skip link targets one programmatically focusable main landmark on public trust surfaces", () => {
+  const { scratch, outputDir } = buildFixture();
+  try {
+    for (const relative of ["index.html", "about/index.html", "standards/index.html", "corrections/index.html"]) {
+      const html = readFileSync(join(outputDir, relative), "utf8");
+      const skip = '<a class="skip-to-content" href="#main-content">Skip to content</a>';
+      const main = '<main id="main-content" tabindex="-1" role="main">';
+      assert.ok(html.includes(skip), relative + ": missing keyboard skip affordance");
+      assert.ok(html.includes(main), relative + ": missing focusable main landmark");
+      assert.ok(html.indexOf(skip) < html.indexOf(main), relative + ": skip link must precede main");
+      assert.equal((html.match(/id="main-content"/gu) ?? []).length, 1,
+        relative + ": ambiguous duplicate main anchor");
+    }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
