@@ -177,7 +177,7 @@ ${renderHeadTags({ ...headCtx, ogImage: headCtx.ogImage ?? absoluteUrl(property.
 <body>
 <a class="skip-to-content" href="#main-content">Skip to content</a>
 ${siteHeader(property, options.activeSlug)}
-<main id="main-content" role="main">
+<main id="main-content" tabindex="-1" role="main">
 ${bodyHtml}
 </main>
 ${siteFooter(property, options)}
