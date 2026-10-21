@@ -1,22 +1,32 @@
 # Koios.News website
 
-`@causeway-services/koios-news-site` is the public website renderer and its
-Cloudflare release carrier. It is a submodule of `causeway-services/koios-news`.
-The parent supplies the property record, corpus, published ledger and source
-archive. Its GitHub Actions workflow owns building, previewing, deployment and
-public verification. A push here updates the parent's pinned site revision.
+`@causeway-services/koios-news-site` is the **original Koios.News public
+website renderer and guarded Cloudflare release carrier**. Its current,
+writable publishing application is
+[causeway-services/koios.news](https://github.com/causeway-services/koios.news),
+which selects this repository at `services/website`, owns the original
+property configuration, independently accepted content/data inputs and
+`config/website-release.json` package/version/integrity selection. The
+historical [causeway-services/koios-news](https://github.com/causeway-services/koios-news)
+repository is **archived**. Its former GitHub Actions `site.yml` and October
+18 release receipts are retained history, **not current publishing authority**.
 
-`src/build.mjs` and `src/render` are the implementation that served the previous
-live site, recovered from engineering's `news-property` application.
-Rendering uses the declared text, theming, HTML metadata and RDF providers
-in the admitted immutable machine artifact. The parent workflow executes
-that artifact with pinned publication inputs; it does not rebuild a separate
-vendored copy or resolve house packages from the laptop. Wrangler remains
-pinned as a production dependency.
+A push to this website source **does not automatically update** either
+application's Git submodule, publish an immutable registry package, select it
+in the current application, install a native Guix/LAGOON release or update
+the public Cloudflare Worker. Treat those as distinct real receiving steps.
 
-Metadata projections bind a named article's original source digest and a dated
-correction. Its admitted body remains unchanged. The parent README describes
-authoring and publication.
+`src/build.mjs` and `src/render` are the original rendering implementation,
+recovered from engineering's `news-property` application. They consume the
+declared text, theming, HTML metadata and RDF providers from an admitted,
+immutable runtime with exact independently accepted inputs. Current operation
+requires the native
+[Cold Red Gate Koios composition](https://github.com/561-group/cold-red-gate-services-section/tree/main/deployment/applications/koios),
+original site package custody, Cloudflare preview/rollback and separate public
+readback. Wrangler remains pinned. This source does not copy a second renderer
+or make substitute public articles. Metadata changes preserve actual article
+source/rights/editorial authority and corrections, as specified by the
+[current application](https://github.com/causeway-services/koios.news/blob/main/README.md).
 
 ## Publisher discovery and crawl-economy services (Tunesday, 2026-10-13)
 
@@ -24,7 +34,7 @@ This publisher is both a consumer and a test property for a reusable **public-we
 discovery and answer-citation assessment service**. Its programmatic contract lives
 in the existing rendering package, not in a parallel scraper, ephemeral checklist,
 or imitation of a search engine. The owning newsroom remains
-[causeway-services/koios-news](https://github.com/causeway-services/koios-news);
+[causeway-services/koios.news](https://github.com/causeway-services/koios.news);
 the live content/data ledger and its editorial admission are unchanged.
 
 ### Working service: evidence, not a synthetic SEO score
@@ -134,8 +144,9 @@ Never synthesize recent dates or dummy articles to satisfy this check.
    verify release manifest digests against served assets. Do not declare a
    healthy news service from a passing GitHub code test. Production publication
    and the last new article timestamp are independent availability objectives.
-   Current deployment is owned by the parent Guix/LAGOON admission and the
-   Cloudflare koios-news-primary carrier; never deploy an unadmitted copied
+   Current deployment is owned by the active Koios application's native
+   Guix/LAGOON admission and the Cloudflare koios-news-primary carrier;
+   never deploy an unadmitted copied
    renderer or edit production content without the parent editorial law.
 2. **Crawl**: externally verify 200 on the canonical homepage and a current
    article, robots and XML sitemaps, 301s for legacy routes, feed dates,
@@ -361,7 +372,7 @@ This recovers the corresponding `emsenn/newswire` projection obligation in
 
 The renderer does not grant editorial authority. The ordinary build's existing
 draft filter and required published-ledger rule remain in force, and the
-parent Koios publication operation still verifies and consumes its independent
+current Koios application still verifies and consumes its independent
 publication grant before candidate formation. Ninjs metadata is a serialization
 of admitted source; it does not prove the article's claims or live delivery.
 Ninjs 3.2 uses `uri` for item identity; no unsupported legacy `guid` is added.
