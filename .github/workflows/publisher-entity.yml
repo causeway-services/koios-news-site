@@ -44,3 +44,5 @@ jobs:
           pnpm install --frozen-lockfile
       - name: Build original publisher fixture and validate identity/metadata
         run: node --test test/structured-data.test.mjs
+      - name: Verify original publisher test suite
+        run: pnpm test
