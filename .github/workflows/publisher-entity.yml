@@ -7,6 +7,7 @@ on:
       - 'test/structured-data.test.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/publisher-entity.yml'
   push:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'test/structured-data.test.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/publisher-entity.yml'
 permissions:
   contents: read
