@@ -44,6 +44,14 @@ jobs:
           set -euo pipefail
           assessment_status=0
           node scripts/audit-discovery.mjs https://koios.news --strict --daily-article-target=20 > "$RUNNER_TEMP/assessment.json" || assessment_status=$?
+          if [[ ! -s "$RUNNER_TEMP/assessment.json" ]]; then
+            printf '%s\n' 'Discovery assessment produced no JSON; inspect assessor stderr.' >&2
+            if (( assessment_status == 0 )); then exit 70; fi
+            exit "$assessment_status"
+          fi
+          printf '%s\n' '--- BEGIN web-discovery.assessment/v1 JSON ---'
+          cat "$RUNNER_TEMP/assessment.json"
+          printf '\n%s\n' '--- END web-discovery.assessment/v1 JSON ---'
           node --input-type=module - "$RUNNER_TEMP/assessment.json" >> "$GITHUB_STEP_SUMMARY" <<'NODE'
           import { readFileSync } from "node:fs";
           const report = JSON.parse(readFileSync(process.argv[2], "utf8"));
