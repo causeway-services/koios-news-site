@@ -1,0 +1,60 @@
+{
+  "schema": "repository.consumer-component-receiving.v1",
+  "originalWork": "https://github.com/red-cup-engineering/computer-content-engineering-services-section/issues/20",
+  "repository": {
+    "name": "causeway-services/koios-news-site",
+    "id": 1425790914,
+    "private": false,
+    "base": "8a0ce48a7f914a55623fe139ff9e0b7352d5d168",
+    "tree": "aa18da176df8bd45feca240d5c1800d719c04e2c"
+  },
+  "verdict": "MET_SELECTED_CURRENT_SITE_BUILD_COMPONENT",
+  "independentReceiving": {
+    "sourceFiles": [
+      {
+        "path": "src/render/public-records.mjs",
+        "mode": "100644",
+        "sha256": "7d0f9f8a8b7681fb055d6e7ee25077abc47fc651133ba4ab3acc4b6cfade7c88",
+        "gitBlob": "e6c40a736194a744ccbe6d028d522e7ed7882085",
+        "bytes": 6902
+      },
+      {
+        "path": "test/structured-data.test.mjs",
+        "mode": "100644",
+        "sha256": "18ec19328a36051caadc57b15ae86494528d92433a96716b6650bd31229a8adf",
+        "gitBlob": "1f582739671b18d9c902c0ad0e971604f2fb66cc",
+        "bytes": 7806
+      },
+      {
+        "path": "README.md",
+        "mode": "100644",
+        "sha256": "a1d0346a53968af064a82703f0d0649fd1735bceaf5a89e0725d195cd97f8201",
+        "gitBlob": "5ee32b1a4a0861923749ec54cc721dbd2373e71c",
+        "bytes": 24103
+      }
+    ],
+    "evidenceCarriersVerified": 27,
+    "nativeTests": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "todo": 0,
+    "maxRSSKiB": 104720,
+    "scopeTerminal": true,
+    "aliasesAndIntentAbsent": true,
+    "sourceAndSevenExactSelectedProvidersUnchanged": true,
+    "receivingIndexSHA256": "ec8cf5cb2c15f51276e5884b8b362e58748583d83f2335d70929a01403e3960d"
+  },
+  "receivedCapabilities": [
+    "The existing build retains section, keyword, category, masthead publisher and original permalink in Ninjs3.2 standard fields.",
+    "A correction retains canonical URI and first publication time while advancing witnessed correction time and body.",
+    "The same item is present before withholding and absent afterward in Ninjs, RSS, Atom and JSONFeed.",
+    "Forged published frontmatter still refuses at the existing required publication ledger."
+  ],
+  "limits": [
+    "Synthetic source corpus and actual original build through seven current declared providers; not new editorial authority acceptance.",
+    "Full package closure, immutable publication, installed/live delivery and Rete serve migration remain open.",
+    "Original legacy codec/frontmatter capabilities and repository custody remain on original Work; no consolidation/deletion accepted."
+  ]
+}
