@@ -6,12 +6,18 @@ on:
       - "src/discovery-audit.mjs"
       - "scripts/audit-discovery.mjs"
       - "test/discovery-audit.test.mjs"
+      - "src/render/templates.mjs"
+      - "src/render/head.mjs"
+      - "test/structured-data.test.mjs"
       - ".github/workflows/discovery-readiness.yml"
   pull_request:
     paths:
       - "src/discovery-audit.mjs"
       - "scripts/audit-discovery.mjs"
       - "test/discovery-audit.test.mjs"
+      - "src/render/templates.mjs"
+      - "src/render/head.mjs"
+      - "test/structured-data.test.mjs"
       - ".github/workflows/discovery-readiness.yml"
   schedule:
     - cron: "17 12 * * 2"
@@ -58,6 +64,9 @@ jobs:
           console.log("## Koios.News discovery receiving");
           console.log("Observed:", report.observedAt);
           console.log("Technical discovery sample ready:", report.decision.technicalDiscoverySampleReady);
+          console.log("Actual live publisher identity:", JSON.stringify(report.findings.find(f => f.id === "publisher-graph-linkage") ?? null));
+          console.log("Actual sampled article publisher identity:", JSON.stringify(report.findings.find(f => f.id === "article-publisher-linkage") ?? null));
+          console.log("Source merge is not publication; fail and unverified states remain until a live original release is independently read back.");
           console.log("Publisher-declared NEW-article cadence:", JSON.stringify(report.decision.publicationCadence));
           console.log("A news sitemap alone cannot prove article delivery or editorial approval.");
           console.log("Cloudflare Pay Per Crawl:", report.decision.payPerCrawlEligible);
