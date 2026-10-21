@@ -27,6 +27,18 @@ test("article structured data exposes accepted source citations", () => {
     const article = jsonLdObjects(html).find((object) => object["@type"] === "NewsArticle");
 
     assert.ok(article, "article page must include NewsArticle JSON-LD");
+    const homeHtml = readFileSync(join(outputDir, "index.html"), "utf8");
+    const homeObjects = jsonLdObjects(homeHtml).flat();
+    const publisher = homeObjects.find((object) => object["@type"] === "NewsMediaOrganization");
+    const website = homeObjects.find((object) => object["@type"] === "WebSite");
+    assert.ok(publisher, "home has actual publication entity");
+    assert.ok(website, "home has a distinct, source-derived website entity");
+    assert.equal(publisher["@id"], "https://koios.news/#publisher");
+    assert.equal(website["@id"], "https://koios.news/#website");
+    assert.deepEqual(website.publisher, { "@id": publisher["@id"] });
+    assert.equal(publisher.url, "https://koios.news/");
+    assert.equal(article.publisher["@id"], publisher["@id"]);
+
     const records = JSON.parse(readFileSync(join(outputDir, "posts", "ai-compute-bottleneck-power-problem", "citation.json"), "utf8"));
     assert.equal(records.length, 1);
     const citation = records[0];
