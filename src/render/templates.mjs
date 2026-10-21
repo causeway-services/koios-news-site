@@ -264,7 +264,12 @@ export function renderHomePage({ property, posts, mostRead, asOf }) {
     siteName: property.name,
     ogType: "website",
     locale: property.locale,
-    jsonLd: newsMediaOrganizationJsonLd({ name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") }),
+    jsonLd: [
+      { ...newsMediaOrganizationJsonLd({ name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") }),
+        "@id": url(property, "/#publisher"), mainEntityOfPage: { "@id": url(property, "/") } },
+      { "@context": "https://schema.org", "@type": "WebSite", "@id": url(property, "/#website"),
+        name: property.name, url: url(property, "/"), publisher: { "@id": url(property, "/#publisher") } },
+    ],
     fediverseCreator: property.distribution?.activityPubActor,
     actorUrl: property.distribution?.activityPubActor,
   };
