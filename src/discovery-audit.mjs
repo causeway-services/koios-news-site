@@ -124,6 +124,42 @@ function equalUrl(actual, expected) {
   try { return new URL(actual).href === new URL(expected).href; } catch { return false; }
 }
 
+/** An entity fragment on the canonical homepage; an off-site @id is not
+ * evidence that this publisher owns the claimed URL. */
+function homeEntityId(value, origin) {
+  if (typeof value !== "string") return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.origin === origin && parsed.pathname === "/" &&
+      parsed.search === "" && parsed.hash.length > 1;
+  } catch { return false; }
+}
+
+/** Independently inspect the actual homepage HTML rather than deriving
+ * schema identity from our source or assuming a source merge deployed.
+ * An Organization node alone does not prove a Website-to-publisher link.
+ */
+export function inspectPublisherGraph(html, origin) {
+  const ld = jsonLd(html);
+  const publisher = ld.objects.find(record =>
+    (isType(record, "NewsMediaOrganization") || isType(record, "Organization")) &&
+      equalUrl(record?.url, origin + "/")) ?? null;
+  const website = ld.objects.find(record =>
+    isType(record, "WebSite") && equalUrl(record?.url, origin + "/")) ?? null;
+  const publisherId = publisher?.["@id"] ?? null;
+  const websiteId = website?.["@id"] ?? null;
+  const websitePublisherId = website?.publisher?.["@id"] ?? null;
+  const publisherName = publisher?.name ?? null;
+  return {
+    publisherId, publisherName, websiteId, websitePublisherId,
+    parsingErrors: ld.errors,
+    linked: ld.errors === 0 && typeof publisherName === "string" &&
+      publisherName.trim().length > 0 &&
+      homeEntityId(publisherId, origin) && homeEntityId(websiteId, origin) &&
+      publisherId !== websiteId && websitePublisherId === publisherId,
+  };
+}
+
 /** Public news sitemap observation. These are *advertised URLs*, not a proof
  * of editorial approval, delivery, indexing, or a fulfilled commercial quota.
  * Duplicate locations never multiply output; invalid dates/addresses result
@@ -180,6 +216,8 @@ export function inspectArticle(html) {
       published: article.datePublished ?? null, modified: article.dateModified ?? null,
       author: author?.name ?? null, authorUrl: author?.url ?? null,
       publisher: article.publisher?.name ?? null,
+      publisherId: article.publisher?.["@id"] ?? null,
+      publisherUrl: article.publisher?.url ?? null,
       citations: Array.isArray(article.citation) ? article.citation.length : article.citation ? 1 : 0,
       license: article.license ?? null, free: article.isAccessibleForFree ?? null,
     } : null,
@@ -254,6 +292,13 @@ export async function auditDiscovery({ origin, fetchImpl = fetch, observedAt = n
     : results.home.status !== 200 ? "unknown" : hasOrganization ? "pass" : "unverified",
     newsProfile ? "Publisher has structured identity" : "Organization identity is declared when applicable, not a universal indexing requirement",
     "article", { parsingErrors: homeLd.errors });
+  const publisherGraph = newsProfile ? inspectPublisherGraph(results.home.body, site) : null;
+  if (newsProfile) {
+    record("publisher-graph-linkage", stateIf("home", publisherGraph.linked),
+      "Public homepage WebSite identifies the same canonical NewsMediaOrganization through a stable @id",
+      "article", publisherGraph);
+    if (results.home.status === 200) results.home.inspection = { publisherGraph };
+  }
   record("robots-sitemap", stateIf("robots", results.robots.body.includes(site + "/sitemap.xml")),
     "Robots announces canonical sitemap", "sitemap");
   const blanketBlock = /^user-agent:\s*\*\s*$(?:(?!user-agent:)[\s\S])*?^disallow:\s*\/\s*$/imu.test(results.robots.body);
@@ -311,6 +356,15 @@ export async function auditDiscovery({ origin, fetchImpl = fetch, observedAt = n
         "Article includes parseable NewsArticle/Article JSON-LD", "article", { errors: inspected.structuredDataErrors }, true);
       record("article-authorship", stateIf("article", Boolean(article?.author && article?.authorUrl && article?.publisher)),
         "Structured article names an author, author URL and publisher", "article");
+      record("article-publisher-linkage",
+        results.home.status !== 200 || results.article.status !== 200 ? "unknown" :
+          publisherGraph.linked && article?.publisherId === publisherGraph.publisherId &&
+          article?.publisher === publisherGraph.publisherName &&
+          equalUrl(article?.publisherUrl, site + "/") ? "pass" : "fail",
+        "Public NewsArticle points to the same source-backed publisher @id as the live homepage",
+        "article", { expectedPublisherId: publisherGraph.publisherId,
+          observedPublisherId: article?.publisherId ?? null,
+          publisherName: article?.publisher ?? null, publisherUrl: article?.publisherUrl ?? null });
       record("article-dates", stateIf("article", Boolean(article?.published && article?.modified &&
         Number.isFinite(Date.parse(article.published)) && Number.isFinite(Date.parse(article.modified)))),
         "Structured article dates are parseable", "article");

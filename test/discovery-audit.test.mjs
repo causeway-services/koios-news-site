@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { auditDiscovery, inspectArticle } from "../src/discovery-audit.mjs";
+import { auditDiscovery, inspectArticle, inspectPublisherGraph } from "../src/discovery-audit.mjs";
 
 const origin = "https://koios.news";
 const articleUrl = origin + "/posts/proven-story/";
@@ -64,6 +64,60 @@ test("publisher discovery returns a reusable typed report with explicit uncertai
   assert.equal(finding(result, "article-license").state, "pass");
   assert.equal(finding(result, "cloudflare-pay-per-crawl").state, "unverified");
   assert.equal(Object.keys(result.observations).length, 9);
+});
+
+test("public homepage and article identify one source-owned publisher; mere Organization is insufficient", async () => {
+  const publisherId = origin + "/#publisher";
+  const publisher = { "@context":"https://schema.org", "@type":"NewsMediaOrganization",
+    "@id":publisherId, name:"Koios.News", url:origin+"/" };
+  const website = { "@context":"https://schema.org", "@type":"WebSite",
+    "@id":origin+"/#website", name:"Koios.News", url:origin+"/",
+    publisher:{ "@id":publisherId } };
+  const linkedHome = '<html><head><link rel="canonical" href="'+origin+'/">' +
+    '<script type="application/ld+json">'+JSON.stringify([publisher, website])+'</script></head></html>';
+  const linkedArticle = article.replace(
+    '"publisher":{"@type":"Organization","name":"Koios.News"}',
+    '"publisher":{"@type":"Organization","@id":"'+publisherId+'","name":"Koios.News","url":"'+origin+'/"}');
+  assert.notEqual(article, linkedArticle, "article fixture must include the exact publisher field");
+  const linked = inspectPublisherGraph(linkedHome,origin);
+  assert.equal(linked.linked,true);
+  assert.equal(linked.publisherId,publisherId);
+  assert.equal(linked.websiteId,origin+"/#website");
+  const report = await run({ "/":linkedHome, "/posts/proven-story/":linkedArticle });
+  assert.equal(finding(report,"publisher-graph-linkage").state,"pass");
+  assert.equal(finding(report,"article-publisher-linkage").state,"pass");
+  assert.equal(report.observations.home.inspection.publisherGraph.linked,true);
+  assert.equal(report.observations.article.inspection.article.publisherId,publisherId);
+  assert.equal(report.decision.technicalDiscoverySampleReady,true);
+
+  const oldHome = await run();
+  assert.equal(finding(oldHome,"publisher-identity").state,"pass");
+  assert.equal(finding(oldHome,"publisher-graph-linkage").state,"fail");
+  assert.equal(finding(oldHome,"article-publisher-linkage").state,"fail");
+  assert.equal(oldHome.decision.technicalDiscoverySampleReady,true,
+    "missing publisher relation is not itself proof of crawl exclusion");
+});
+
+test("publisher graph rejects wrong-site, conflicting and unconnected IDs", async () => {
+  const org = { "@type":"NewsMediaOrganization", "@id":origin+"/#publisher",
+    name:"Koios.News", url:origin+"/" };
+  const website = { "@type":"WebSite", "@id":origin+"/#website", url:origin+"/",
+    name:"Koios.News", publisher:{ "@id":origin+"/#publisher" } };
+  const asHtml=(a,b)=>'<script type="application/ld+json">'+
+    JSON.stringify({ "@context":"https://schema.org", "@graph":[a,b] })+'</script>';
+  assert.equal(inspectPublisherGraph(asHtml(org,website),origin).linked,true);
+  assert.equal(inspectPublisherGraph(asHtml(org,{...website,publisher:{"@id":origin+"/#wrong"}}),origin).linked,false);
+  assert.equal(inspectPublisherGraph(asHtml({...org,"@id":"https://unrelated.example/#publisher"},website),origin).linked,false);
+  assert.equal(inspectPublisherGraph(asHtml(org,{...website,"@id":origin+"/#publisher"}),origin).linked,false);
+  assert.equal(inspectPublisherGraph(asHtml(org,{...website,url:"https://unrelated.example/"}),origin).linked,false);
+  assert.equal(inspectPublisherGraph('<script type="application/ld+json">{bad</script>',origin).linked,false);
+  const home = '<link rel="canonical" href="'+origin+'/">'+asHtml(org,website);
+  const noArticleId=await run({"/":home});
+  assert.equal(finding(noArticleId,"publisher-graph-linkage").state,"pass");
+  assert.equal(finding(noArticleId,"article-publisher-linkage").state,"fail");
+  const missingHome=await run({"/":new Error("Provider unobservable")});
+  assert.equal(finding(missingHome,"publisher-graph-linkage").state,"unknown");
+  assert.equal(finding(missingHome,"article-publisher-linkage").state,"unknown");
 });
 
 test("an empty news sitemap is valid when the 48-hour publication window is empty", async () => {
