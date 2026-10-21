@@ -42,6 +42,18 @@ export function renderNinjs(posts, property, citationRenderer) {
     versionCreated: post.modified ? new Date(post.modified).toISOString() : post.publishedAt ?? `${post.date}T00:00:00Z`,
     descriptions: [{ contentType: "text/plain", value: post.description }],
     bodies: [{ contentType: "text/html", value: `<article>${renderMarkdown(post.body, { citation: citationRenderer(post.references) })}</article>` }],
+    subjects: [
+      ...(post.section ? [{ name: post.section, rel: "section" }] : []),
+      ...[...new Set(post.keywords ?? [])].map((name) => ({ name, rel: "keyword" })),
+      ...[...new Set(post.categories ?? [])].map((name) => ({ name, rel: "category" })),
+    ],
+    ...(post.originalPermalink ? { altIds: [{ role: "original-permalink", value: post.originalPermalink }] } : {}),
+    organisations: [{
+      name: typeof property.masthead?.publisher === "string"
+        ? property.masthead.publisher : property.masthead?.publisher?.name ?? property.name,
+      rel: "publisher",
+      ...(property.masthead?.publisher?.url ? { uri: property.masthead.publisher.url } : {}),
+    }],
     standard: { name: "ninjs", version: "3.2", schema: "https://www.iptc.org/std/ninjs/ninjs-schema_3.2.json" },
   })));
 }

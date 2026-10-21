@@ -347,3 +347,23 @@ sampling to verified live deployment, instrument real account observations,
 project rights fields into JSON-LD, implement a rights-aware Cloudflare canary
 in its existing Guix/Worker operations only *after beta admission*, and
 publish qualified jobs through the existing public-web services organization.
+
+### Newswire artifact preservation
+
+The existing `buildProperty` output `ninjs.json` retains the article's canonical
+URI, original publication time, correction time, byline, language and body.
+A source-authored original permalink remains an `altIds` entry.
+Its Ninjs 3.2 `subjects` carry source section, keyword and category metadata;
+`organisations` carries the property's declared masthead publisher (or the
+property name). A correction preserves the URI and first-created time.
+This recovers the corresponding `emsenn/newswire` projection obligation in
+[Content Engineering #20](https://github.com/red-cup-engineering/computer-content-engineering-services-section/issues/20).
+
+The renderer does not grant editorial authority. The ordinary build's existing
+draft filter and required published-ledger rule remain in force, and the
+parent Koios publication operation still verifies and consumes its independent
+publication grant before candidate formation. Ninjs metadata is a serialization
+of admitted source; it does not prove the article's claims or live delivery.
+Ninjs 3.2 uses `uri` for item identity; no unsupported legacy `guid` is added.
+The former Rete workspace/serve contract and repository rehoming remain open
+on the original work.
