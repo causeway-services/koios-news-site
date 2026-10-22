@@ -10,6 +10,7 @@ import { slugify } from "@red-cup-engineering/computer-text-content-engineering-
 import { escapeHtml } from "./markdown.mjs";
 import { hasAdvertisingInventory } from "./advertising-sales.mjs";
 import { renderHeadTags, newsArticleJsonLd, newsMediaOrganizationJsonLd, absoluteUrl } from "./head.mjs";
+import { homeDescription, parentOrganizations } from "./discovery.mjs";
 
 const PAGE_SIZE = 12;
 const esc = escapeHtml;
@@ -260,16 +261,19 @@ export function renderHomePage({ property, posts, mostRead, asOf }) {
   ].filter(Boolean).join("\n");
   const headCtx = {
     title: property.name,
-    description: property.tagline ?? "",
+    description: homeDescription(property),
     canonical: url(property, "/"),
     siteName: property.name,
     ogType: "website",
     locale: property.locale,
     jsonLd: [
       { ...newsMediaOrganizationJsonLd({ id: url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") }),
+        parentOrganization: parentOrganizations(property),
         mainEntityOfPage: { "@id": url(property, "/") } },
       { "@context": "https://schema.org", "@type": "WebSite", "@id": url(property, "/#website"),
-        name: property.name, url: url(property, "/"), publisher: { "@id": url(property, "/#publisher") } },
+        name: property.name, url: url(property, "/"), description: homeDescription(property), inLanguage: property.language ?? "en",
+        publisher: { "@id": url(property, "/#publisher") },
+        potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: `${url(property, "/search/")}?q={search_term_string}` }, "query-input": "required name=search_term_string" } },
     ],
     fediverseCreator: property.distribution?.activityPubActor,
     actorUrl: property.distribution?.activityPubActor,

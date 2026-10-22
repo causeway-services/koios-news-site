@@ -3,7 +3,8 @@
  * The news sitemap window is computed relative to the publication build time.
  * Callers can supply that time to reproduce a particular build.
  */
-import { newsSitemap, robots, sitemap } from "@red-cup-engineering/computer-serialized-content-engineering-services-section/web-feed";
+import { renderRobotsGroups } from "./discovery.mjs";
+import { newsSitemap, sitemap } from "@red-cup-engineering/computer-serialized-content-engineering-services-section/web-feed";
 
 const NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/u;
@@ -48,14 +49,12 @@ export function renderNewsSitemap(posts, property, asOf = new Date()) {
   })));
 }
 
-/** Render `robots.txt`, listing the general and news sitemaps. */
+/** Render `robots.txt`: everyone allowed, each AI crawler named, then the general and news sitemaps. */
 export function renderRobotsTxt(property) {
-  return robots({
-    sitemap: [
-      new URL("/sitemap.xml", property.origin).toString(),
-      ...(property.distribution?.googleNewsSitemap ? [new URL("/news-sitemap.xml", property.origin).toString()] : []),
-    ],
-  });
+  return renderRobotsGroups([
+    new URL("/sitemap.xml", property.origin).toString(),
+    ...(property.distribution?.googleNewsSitemap ? [new URL("/news-sitemap.xml", property.origin).toString()] : []),
+  ]);
 }
 
 /**
