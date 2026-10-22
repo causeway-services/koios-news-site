@@ -1,6 +1,6 @@
 {
   "name": "@causeway-services/koios-news-site",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": false,
   "type": "module",
   "description": "The Koios.News public website, built from the parent service section's publication inputs.",
