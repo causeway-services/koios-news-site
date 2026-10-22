@@ -3,11 +3,12 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { escapeHtml, renderMarkdown } from "./markdown.mjs";
 import { absoluteUrl } from "./head.mjs";
+import { postInstants } from "../publication-instants.mjs";
 
 const json = (record) => `${JSON.stringify(record, null, 2)}\n`;
 const postUrl = (post, property) => absoluteUrl(property.origin, `/posts/${post.slug}`);
 const articleRef = (post, property) => ({ "@type": "NewsArticle", "@id": postUrl(post, property),
-  headline: post.title, datePublished: post.publishedAt ?? post.date });
+  headline: post.title, datePublished: postInstants(post).publishedInstant });
 
 export function renderCoverage(posts, property) {
   const terms = new Map();
@@ -35,11 +36,12 @@ export function renderCoverage(posts, property) {
 }
 
 export function renderNinjs(posts, property, citationRenderer) {
-  return json(posts.map((post) => ({
+  return json(posts.map((bare) => {
+    const post = postInstants(bare);
+    return {
     uri: postUrl(post, property), type: "text", title: post.title, by: post.author,
     language: property.language ?? "en", pubStatus: "usable",
-    firstCreated: post.publishedAt ?? `${post.date}T00:00:00Z`,
-    versionCreated: post.modified ? new Date(post.modified).toISOString() : post.publishedAt ?? `${post.date}T00:00:00Z`,
+    firstCreated: post.publishedInstant, versionCreated: post.modifiedInstant,
     descriptions: [{ contentType: "text/plain", value: post.description }],
     bodies: [{ contentType: "text/html", value: `<article>${renderMarkdown(post.body, { citation: citationRenderer(post.references) })}</article>` }],
     subjects: [
@@ -55,7 +57,8 @@ export function renderNinjs(posts, property, citationRenderer) {
       ...(property.masthead?.publisher?.url ? { uri: property.masthead.publisher.url } : {}),
     }],
     standard: { name: "ninjs", version: "3.2", schema: "https://www.iptc.org/std/ninjs/ninjs-schema_3.2.json" },
-  })));
+    };
+  }));
 }
 
 export function renderPublicationProvenance(posts, contentDir, property) {

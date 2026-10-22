@@ -61,17 +61,17 @@ a { color: inherit; }
 .skip-to-content:focus { position: static; }
 
 /* === MASTHEAD === */
-header[role=banner] { border-bottom: 5px solid var(--rule); padding-top: 1.5rem; margin-bottom: 2rem; }
+body > header { border-bottom: 5px solid var(--rule); padding-top: 1.5rem; margin-bottom: 2rem; }
 .site-title { font-family: var(--sans); font-weight: 900; font-size: clamp(2rem, 8vw, 3.5rem);
   text-transform: uppercase; letter-spacing: -.03em; line-height: .9; color: var(--ink); text-decoration: none; display: inline-block; }
 .site-title:hover { color: var(--accent); }
 .site-tagline { display: block; font-family: var(--sans); font-size: .78rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: .14em; color: var(--accent); margin-top: .5rem; }
-header[role=banner] nav { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 1.1rem; padding: .6rem 0;
+body > header nav { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 1.1rem; padding: .6rem 0;
   border-top: 2px solid var(--rule); font-family: var(--sans); font-size: .8rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .05em; }
-header[role=banner] nav a { text-decoration: none; color: var(--ink); }
-header[role=banner] nav a:hover, header[role=banner] nav a[aria-current=page] { color: var(--accent); }
+body > header nav a { text-decoration: none; color: var(--ink); }
+body > header nav a:hover, body > header nav a[aria-current=page] { color: var(--accent); }
 
 /* === HOME: lead + three-column top block + section blocks + latest list === */
 .stories { display: grid; grid-template-columns: 1fr; }
@@ -155,6 +155,8 @@ article.h-entry > .p-name { font-size: clamp(1.8rem, 5vw, 2.7rem); line-height: 
 .e-content blockquote { border-left: 5px solid var(--accent); padding: .3rem 0 .3rem 1.2rem; margin: 1.6rem 0; font-style: italic; }
 .e-content img { border: 1px solid var(--rule); margin: 1.6rem 0; }
 .breadcrumbs { max-width: var(--measure); margin: 0 auto 1.1rem; font: .8rem var(--sans); }
+.article-disclosure, .author-disclosure { font: .8rem/1.5 var(--sans); color: var(--ink-soft); margin: -1rem 0 1.2rem; }
+.author-disclosure { margin: 1rem 0; }
 .article-utilities { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin: -1rem 0 1.4rem; font: .78rem var(--sans); color: var(--ink-soft); }
 .article-navigation { border: 1px solid var(--rule); padding: 1rem 1.2rem; margin: 1.5rem 0; background: var(--surface-deep); }
 .article-navigation summary { cursor: pointer; font: 800 .85rem var(--sans); text-transform: uppercase; }
@@ -245,16 +247,16 @@ button:hover { background: var(--ink); color: var(--surface); }
   margin: 2rem 0; padding-top: 1rem; border-top: 1px solid var(--rule); }
 
 /* === FOOTER === */
-footer[role=contentinfo] { border-top: 5px solid var(--rule); margin-top: 3rem; padding: 1.5rem 0 3rem;
+body > footer { border-top: 5px solid var(--rule); margin-top: 3rem; padding: 1.5rem 0 3rem;
   font-family: var(--sans); font-size: .78rem; line-height: 1.5; }
-footer[role=contentinfo] a { color: var(--accent); text-decoration: underline; }
-footer[role=contentinfo] .inner { display: flex; flex-wrap: wrap; gap: 1rem; }
-footer[role=contentinfo] .inner span:first-child { flex-basis: 100%; font-family: var(--serif); font-style: italic; }
+body > footer a { color: var(--accent); text-decoration: underline; }
+body > footer .inner { display: flex; flex-wrap: wrap; gap: 1rem; }
+body > footer .inner span:first-child { flex-basis: 100%; font-family: var(--serif); font-style: italic; }
 
 /* === PRINT === */
 @media print {
   :root { --ink: #121212; --surface: #ffffff; --rule: #121212; }
-  header[role=banner], footer[role=contentinfo], .ad-slot, .share-links, .follow-feeds, .skip-to-content, .article-navigation, .article-utilities, .breadcrumbs { display: none !important; }
+  body > header, body > footer, .ad-slot, .share-links, .follow-feeds, .skip-to-content, .article-navigation, .article-utilities, .breadcrumbs { display: none !important; }
   body { max-width: 100%; padding: 0; }
   a { text-decoration: underline; color: var(--ink) !important; }
 }

@@ -87,7 +87,7 @@ This withdrawn draft's original manuscript must not be exposed on the notice.
     assert.equal((notice.match(/id="main-content"/gu) ?? []).length, 1);
     assert.match(notice, /<meta name="robots" content="noindex, follow">/u);
     assert.match(notice, /<link rel="canonical" href="https:\/\/koios\.news\/posts\/withdrawn-source\/">/u);
-    assert.match(notice, /<link rel="stylesheet" href="\/assets\/site\.css">/u);
+    assert.match(notice, /<link rel="stylesheet" href="\/assets\/(?:h\/site\.[0-9a-f]{16}|site)\.css">/u);
     assert.match(notice, /<a href="\/corrections\/">Corrections<\/a>/u);
     assert.match(notice, /<a href="\/archive\/">Browse published articles<\/a>/u);
     assert.doesNotMatch(notice, /data-slot=|data-aa=|\/assets\/house-ad\.js|<iframe/gu,

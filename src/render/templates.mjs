@@ -9,7 +9,10 @@
 import { slugify } from "@red-cup-engineering/computer-text-content-engineering-services-section/slugify-text";
 import { escapeHtml } from "./markdown.mjs";
 import { hasAdvertisingInventory } from "./advertising-sales.mjs";
-import { renderHeadTags, newsArticleJsonLd, newsMediaOrganizationJsonLd, absoluteUrl } from "./head.mjs";
+import { renderHeadTags, newsArticleJsonLd, newsMediaOrganizationJsonLd, breadcrumbListJsonLd, webSiteJsonLd, profilePageJsonLd, absoluteUrl } from "./head.mjs";
+import { postInstants, publishedDay, latestModified } from "../publication-instants.mjs";
+import { aiAuthorshipStatement, authorPathFor, authorProfile, isDeskByline } from "./authors.mjs";
+import { LOGO_DIMENSIONS } from "./article-fingerprint.mjs";
 
 const PAGE_SIZE = 12;
 const esc = escapeHtml;
@@ -33,10 +36,33 @@ function humanDate(iso) {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
+/** The time of day is shown only when it is a recorded fact; a day-only article shows its day. */
+function instantLabel(instant, precision, day) {
+  return precision === "instant" ? `${humanDate(instant)} at ${instant.slice(11, 16)} UTC` : humanDate(day);
+}
+
 function publicationLabel(post) {
-  return post.publishedAt
-    ? `${humanDate(post.date)} at ${post.publishedAt.slice(11, 16)} UTC`
-    : humanDate(post.date);
+  const resolved = postInstants(post);
+  return instantLabel(resolved.publishedInstant, resolved.publishedPrecision, publishedDay(resolved));
+}
+
+/** The publisher logo as structured data: a raster ImageObject with its true size. */
+function publisherLogo(property) {
+  return { url: url(property, "/logo.png"), width: LOGO_DIMENSIONS.width, height: LOGO_DIMENSIONS.height };
+}
+
+/**
+ * A `<title>` a results page will not cut off: the headline and brand when
+ * they fit in 60 characters, else the headline alone, else the headline
+ * shortened at a word boundary.
+ */
+export function documentTitle(headline, siteName, limit = 60) {
+  const branded = `${headline} – ${siteName}`;
+  if (branded.length <= limit) return branded;
+  if (headline.length <= limit) return headline;
+  const cut = headline.slice(0, limit - 1);
+  const boundary = cut.lastIndexOf(" ");
+  return `${(boundary > limit / 2 ? cut.slice(0, boundary) : cut).replace(/[\s,;:–—-]+$/u, "")}…`;
 }
 
 /**
@@ -61,7 +87,7 @@ function primaryNav(property, activeSlug) {
  * @returns {string}
  */
 function siteHeader(property, activeSlug) {
-  return `<header role="banner"><div class="site-identity"><a class="site-title" href="/">${esc(property.name)}</a>` +
+  return `<header><div class="site-identity"><a class="site-title" href="/">${esc(property.name)}</a>` +
     `<span class="site-tagline">${esc(property.tagline ?? "")}</span></div>${primaryNav(property, activeSlug)}</header>`;
 }
 
@@ -96,7 +122,7 @@ function adSlot(property, position, post) {
   if (!/^\d+$/u.test(unit) || !aads.units?.includes(unit)) throw new Error(`unrecognized A-Ads unit: ${unit}`);
   const loading = position === "footer" ? ' loading="lazy"' : "";
   return `<aside class="ad-slot ad-slot--paid" aria-label="Advertisement"><span class="ad-slot__label">Advertisement</span>` +
-    `<iframe data-aa="${unit}" src="https://acceptable.a-ads.com/${unit}/?size=Adaptive" title="Advertisement"${loading} referrerpolicy="no-referrer"></iframe></aside>`;
+    `<iframe data-aa="${unit}" src="https://acceptable.a-ads.com/${unit}/?size=Adaptive" title="Advertisement" height="110"${loading} referrerpolicy="no-referrer"></iframe></aside>`;
 }
 
 function followFeeds(property) {
@@ -140,7 +166,7 @@ function siteFooter(property, options = {}) {
   const year = (property.masthead?.year ?? new Date().getUTCFullYear());
   const links = [
     '<a href="/about/">About</a>', '<a href="/masthead/">Masthead</a>', '<a href="/standards/">Standards</a>',
-    '<a href="/corrections/">Corrections</a>', '<a href="/about/#ownership">Ownership</a>', '<a href="/privacy/">Privacy</a>',
+    '<a href="/corrections/">Corrections</a>', '<a href="/contact/">Contact</a>', '<a href="/about/#ownership">Ownership</a>', '<a href="/privacy/">Privacy</a>',
     hasAdvertisingInventory(property) ? '<a href="/advertise/">Advertise</a>' : '',
     property.content?.sourceFeeds ? '<a href="/sources/">Newsroom sources</a>' : '',
     '<a href="/archive/">Archive</a>', '<a href="/bibliography/">Article citations</a>',
@@ -148,7 +174,7 @@ function siteFooter(property, options = {}) {
     '<a href="/sitemap.xml">Sitemap</a>',
     actor ? `<a rel="me" href="${esc(actor)}">${esc(actor.replace(/^https?:\/\//u, ""))}</a>` : "",
   ].filter(Boolean).join(" · ");
-  return `<footer role="contentinfo">${options.advertising === false ? "" : options.paidInventory ? adSlot(property, "footer") : houseAdSlot(property, "footer")}<div class="inner">` +
+  return `<footer>${options.advertising === false ? "" : options.paidInventory ? adSlot(property, "footer") : houseAdSlot(property, "footer")}<div class="inner">` +
     `<span>© ${esc(String(year))} ${esc(property.name)}</span>${links}</div></footer>`;
 }
 
@@ -205,7 +231,7 @@ export function storyCard(post, options = {}) {
     `<span class="story__kicker"><a href="/sections/${esc(post.section)}/">${esc(post.sectionTitle)}</a></span>` +
     `<h2 class="story__head"><a href="/posts/${esc(post.slug)}/">${esc(post.title)}</a></h2>` +
     `<p class="story__sum">${esc(post.description)}</p>` +
-    `<p class="story__meta"><time datetime="${esc(post.publishedAt ?? post.date)}">${esc(publicationLabel(post))}</time> · ${esc(post.author)}</p></article>`;
+    `<p class="story__meta"><time datetime="${esc(postInstants(post).publishedInstant)}">${esc(publicationLabel(post))}</time> · ${esc(post.author)}</p></article>`;
 }
 
 /**
@@ -219,7 +245,9 @@ export function storyCard(post, options = {}) {
  */
 export function renderHomePage({ property, posts, mostRead, asOf }) {
   const front = asOf === undefined ? posts : posts.filter((post) => {
-    const published = Date.parse(post.publishedAt ?? `${post.date}T00:00:00Z`);
+    // A day-only article is on the front page from the start of its day.
+    const resolved = postInstants(post);
+    const published = Date.parse(resolved.publishedPrecision === "instant" ? resolved.publishedInstant : `${post.date}T00:00:00Z`);
     return published <= asOf.getTime() && published >= asOf.getTime() - 30 * 24 * 60 * 60 * 1000;
   });
   const lead = front[0];
@@ -246,10 +274,10 @@ export function renderHomePage({ property, posts, mostRead, asOf }) {
     }).join("")}</ol></section>`
     : "";
   const body = [
-    lead ? `<div class="edition-bar"><span>Latest publication: <time datetime="${esc(lead.publishedAt ?? lead.date)}">${esc(publicationLabel(lead))}</time></span><a href="/archive/">All reporting →</a></div>` : "",
+    lead ? `<div class="edition-bar"><span>Latest publication: <time datetime="${esc(postInstants(lead).publishedInstant)}">${esc(publicationLabel(lead))}</time></span><a href="/archive/">All reporting →</a></div>` : "",
     adSlot(property, "header"),
     lead ? `<section class="front-page" aria-label="Featured and latest reporting"><div class="front-page__lead">${storyCard(lead, { lead: true })}</div>` +
-      `<aside class="front-page__latest"><h2>Latest reports</h2>${front.slice(1, 5).map(post => storyCard(post, {showImage:false})).join("")}</aside></section>` :
+      `<aside class="front-page__latest" aria-label="Latest reports"><h2>Latest reports</h2>${front.slice(1, 5).map(post => storyCard(post, {showImage:false})).join("")}</aside></section>` :
       `<p>No reports published in the past 30 days. <a href="/archive/">Browse the archive</a>.</p>`,
     `<nav class="coverage-nav" aria-label="Explore news desks">${(property.sections ?? []).map(section => `<a href="/sections/${esc(section.slug)}/">${esc(section.title)} <span>${(bySection.get(section.slug) ?? []).length} reports</span></a>`).join("")}</nav>`,
     x402Product(property),
@@ -266,10 +294,11 @@ export function renderHomePage({ property, posts, mostRead, asOf }) {
     ogType: "website",
     locale: property.locale,
     jsonLd: [
-      { ...newsMediaOrganizationJsonLd({ id: url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") }),
-        mainEntityOfPage: { "@id": url(property, "/") } },
-      { "@context": "https://schema.org", "@type": "WebSite", "@id": url(property, "/#website"),
-        name: property.name, url: url(property, "/"), publisher: { "@id": url(property, "/#publisher") } },
+      { ...newsMediaOrganizationJsonLd({ id: url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: url(property, "/logo.png") }),
+        mainEntityOfPage: { "@id": url(property, "/") },
+        logo: { "@type": "ImageObject", ...publisherLogo(property) } },
+      webSiteJsonLd({ name: property.name, url: `${property.origin}/`, description: property.tagline, inLanguage: property.language,
+        publisherId: url(property, "/#publisher"), searchUrlTemplate: `${url(property, "/search/")}?q={search_term_string}` }),
     ],
     fediverseCreator: property.distribution?.activityPubActor,
     actorUrl: property.distribution?.activityPubActor,
@@ -335,14 +364,14 @@ function renderLedgers(claims, omissions) {
  */
 function renderCorrectionNotice(corrections) {
   if (!corrections || corrections.length === 0) return "";
-  return `<aside class="correction-notice"><h2>Corrections</h2><ol>` +
+  return `<aside class="correction-notice" aria-label="Corrections to this article"><h2>Corrections</h2><ol>` +
     corrections.map((entry) => `<li><time datetime="${esc(entry.date)}">${esc(humanDate(entry.date))}</time>: ${esc(entry.note)}</li>`).join("") +
     `</ol></aside>`;
 }
 
 function renderArticleRights(post) {
   return post.license
-    ? `<aside class="article-rights"><h2>Rights and republication</h2><p>Published under ` +
+    ? `<aside class="article-rights" aria-label="Rights and republication"><h2>Rights and republication</h2><p>Published under ` +
       (post.licenseUrl ? `<a rel="license" href="${esc(post.licenseUrl)}">${esc(post.license)}</a>` : esc(post.license)) +
       `.${post.syndicationRights ? ` ${esc(post.syndicationRights)}` : ""}</p></aside>`
     : "";
@@ -394,6 +423,33 @@ function renderRelatedStories(post, allPosts) {
 }
 
 /**
+ * Place an advertisement after an article's first paragraph, so the lede is
+ * the first thing a reader (and the layout-shift budget) meets. An article
+ * without a paragraph closes with it.
+ * @param {string} bodyHtml
+ * @param {string} adHtml
+ */
+function withAdAfterLede(bodyHtml, adHtml) {
+  if (adHtml === "") return bodyHtml;
+  const close = bodyHtml.indexOf("</p>");
+  return close < 0 ? bodyHtml + adHtml : `${bodyHtml.slice(0, close + 4)}${adHtml}${bodyHtml.slice(close + 4)}`;
+}
+
+/**
+ * The reader-facing statement of how the article was made, and the way to
+ * report an error in it.
+ */
+function renderAiDisclosure(property, post) {
+  const profile = authorProfile(property, post.authorSlug);
+  const standards = '<a href="/standards/">How we report</a> · <a href="/corrections/#report-an-error">Report an error or request a correction</a>';
+  const statement = profile.kind === "ai"
+    ? `This article is bylined to ${esc(post.author)}, ${profile.jobTitle ? `the ${esc(profile.jobTitle)} of ${esc(property.name)}, ` : ""}an artificial-intelligence character rather than a human journalist. ` +
+      `It was researched and drafted with AI, bound to its cited sources, and published after independent editorial assessment.`
+    : `${esc(property.name)} produces this reporting with AI assistance, bound to cited sources and published after independent editorial assessment.`;
+  return `<p class="article-disclosure"><strong>AI disclosure.</strong> ${statement} ${standards}.</p>`;
+}
+
+/**
  * Render a single article page.
  * @param {object} input
  * @param {object} input.property
@@ -401,10 +457,13 @@ function renderRelatedStories(post, allPosts) {
  * @param {object[]} input.allPosts every published post, for related stories
  * @returns {string}
  */
-export function renderArticlePage({ property, post, allPosts, verificationArticleUnit, noindex = false }) {
+export function renderArticlePage({ property, post: bare, allPosts, verificationArticleUnit, noindex = false }) {
+  const post = postInstants(bare);
   const articleUrl = url(property, `/posts/${post.slug}/`);
+  const authorPath = authorPathFor(property, post);
+  const profile = authorProfile(property, post.authorSlug);
   const hero = post.image
-    ? `<figure class="article-hero"><img src="${esc(post.image)}" alt="${esc(post.imageAlt ?? "")}">` +
+    ? `<figure class="article-hero"><img src="${esc(post.image)}" alt="${esc(post.imageAlt ?? "")}" width="1200" height="675" fetchpriority="high" decoding="async">` +
       (post.imageCredit ? `<figcaption>${esc(post.imageCredit)}</figcaption>` : "") + `</figure>`
     : "";
   const rights = renderArticleRights(post);
@@ -415,19 +474,23 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
   const outline = post.outline ?? [];
   const navigation = outline.length >= 3 ? `<details class="article-navigation" open><summary>In this article</summary><nav aria-label="Article sections"><ol>${outline.map(entry => `<li class="article-navigation__level-${entry.level}"><a href="#${esc(entry.id)}">${esc(entry.title)}</a></li>`).join("")}</ol></nav></details>` : "";
   const sources = references.length ? `<section class="article-sources" id="article-sources"><h2>Read the sources</h2><p>The documents cited in this report. Source statements remain attributed to their authors.</p><ol>${references.map(reference => `<li><a href="${esc(reference.url)}">${esc(reference.title)}</a><span>${esc(reference.containerTitle)}</span></li>`).join("")}</ol></section>` : "";
+  const inArticleAd = adSlot(property, "inArticle", verificationArticleUnit ? { ...post, adUnit: verificationArticleUnit } : post);
+  const updated = post.modifiedInstant !== post.publishedInstant
+    ? `<time class="dt-updated" datetime="${esc(post.modifiedInstant)}"> · Updated ${esc(instantLabel(post.modifiedInstant, post.modifiedPrecision, post.modifiedInstant.slice(0, 10)))}</time>`
+    : "";
   const body = `<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true"> / </span><a href="/sections/${esc(post.section)}/">${esc(post.sectionTitle)}</a></nav><article class="h-entry">` +
     `<span class="article-kicker"><a href="/sections/${esc(post.section)}/">${esc(post.sectionTitle)}</a></span>` +
     `<h1 class="p-name">${esc(post.title)}</h1>` +
     (post.dek ? `<p class="article-dek">${esc(post.dek)}</p>` : "") +
-    `<p class="article-byline"><time class="dt-published" datetime="${esc(post.publishedAt ?? post.date)}">${esc(publicationLabel(post))}</time>` +
-    (post.modified && post.modified !== post.date ? `<time class="dt-updated" datetime="${esc(post.modified)}"> · Updated ${esc(humanDate(post.modified))}</time>` : "") +
-    ` · By <a class="p-author" href="/desks/${esc(post.section)}/">${esc(post.author)}</a></p>` +
+    `<p class="article-byline"><time class="dt-published" datetime="${esc(post.publishedInstant)}">${esc(publicationLabel(post))}</time>` +
+    updated +
+    ` · By <a class="p-author" href="${esc(authorPath)}">${esc(post.author)}</a></p>` +
+    renderAiDisclosure(property, post) +
     `<div class="article-utilities">${post.readingMinutes ? `<span>About ${post.readingMinutes} min read</span>` : ""}${references.length ? `<a href="#article-sources">${references.length} cited sources ↓</a>` : ""}<a href="/standards/">How we report</a></div>` +
     (verificationArticleUnit ? adSlot(property, "header") : "") +
     hero +
-    adSlot(property, "inArticle", verificationArticleUnit ? { ...post, adUnit: verificationArticleUnit } : post) +
     navigation +
-    `<div class="e-content">${post.bodyHtml}</div>` +
+    `<div class="e-content">${withAdAfterLede(post.bodyHtml, inArticleAd)}</div>` +
     sources +
     `<p class="article-citation"><a href="/posts/${esc(post.slug)}/citation.json" download="${esc(post.slug)}.json">Cite this article (CSL-JSON)</a></p>` +
     houseAdSlot(property, "afterArticle", [post.section, ...(post.tags ?? [])]) +
@@ -438,8 +501,11 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
     renderCorrectionNotice(post.corrections) +
     rights +
     `</article>`;
+  const rasterHero = post.image && /\.(?:png|jpe?g|webp|avif)$/iu.test(post.image) && !post.image.startsWith("/fingerprints/")
+    ? [{ url: url(property, post.image) }] : [];
   const headCtx = {
-    title: `${post.title} – ${property.name}`,
+    title: documentTitle(post.title, property.name),
+    socialTitle: post.title,
     description: post.description,
     canonical: articleUrl,
     siteName: property.name,
@@ -450,31 +516,40 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
       ? "Article-specific geometric mark derived from the accompanying facts record."
       : (post.ogImage === post.image ? post.imageAlt : undefined),
     noindex: noindex || Boolean(verificationArticleUnit),
-    articlePublishedTime: post.publishedAt ?? post.date,
-    articleModifiedTime: post.modified ?? post.publishedAt ?? post.date,
+    articlePublishedTime: post.publishedInstant,
+    articleModifiedTime: post.modifiedInstant,
     articleSection: post.sectionTitle,
     articleTags: post.tags,
     citation: {title:post.title, author:post.author, published:post.publishedAt ?? post.date,
       url:articleUrl, language:property.language ?? property.locale?.replaceAll('_', '-'), publication:property.name,
       recordUrl:url(property, `/posts/${post.slug}/citation.json`)},
-    jsonLd: newsArticleJsonLd({
+    jsonLd: [newsArticleJsonLd({
       headline: post.title,
       url: articleUrl,
       image: post.ogImage,
-      datePublished: post.publishedAt ?? post.date,
-      dateModified: post.modified ?? post.publishedAt ?? post.date,
+      images: [...rasterHero, ...(post.schemaImages ?? [])],
+      datePublished: post.publishedInstant,
+      dateModified: post.modifiedInstant,
       author: {
-        type: post.author.startsWith(`${property.name} `) && post.author.endsWith(" Desk") ? "Organization" : "Person",
+        type: isDeskByline(property, post.author) ? "Organization" : "Person",
         name: post.author,
-        url: url(property, `/authors/${post.authorSlug}/`),
+        url: url(property, authorPath),
+        jobTitle: profile.jobTitle,
+        sameAs: profile.sameAs,
       },
-      publisher: { id: url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: url(property, "/favicon.svg") },
+      publisher: { id: url(property, "/#publisher"), name: property.name, url: `${property.origin}/`, logo: publisherLogo(property) },
       description: post.description,
       articleSection: post.sectionTitle,
+      inLanguage: property.language ?? property.locale?.replaceAll("_", "-"),
       keywords: post.keywords,
       citations: post.referenceRecords,
       licenseUrl: post.licenseUrl,
-    }),
+      speakableSelector: post.dek ? ".article-dek" : undefined,
+    }), breadcrumbListJsonLd([
+      { name: "Home", url: url(property, "/") },
+      { name: post.sectionTitle, url: url(property, `/sections/${post.section}/`) },
+      { name: post.title, url: articleUrl },
+    ])],
     fediverseCreator: property.distribution?.activityPubActor,
     actorUrl: property.distribution?.activityPubActor,
   };
@@ -490,13 +565,16 @@ export function renderArticlePage({ property, post, allPosts, verificationArticl
  * @param {object[]} posts
  * @returns {string}
  */
-function renderPostListPage(property, title, description, canonicalPath, posts) {
+function renderPostListPage(property, title, description, canonicalPath, posts, { noindex = false } = {}) {
   const body = `<h1>${esc(title)}</h1><ul class="pages">` +
     posts.map((post) => `<li><a href="/posts/${esc(post.slug)}/">${esc(post.title)}</a><p>${esc(post.description)}</p></li>`).join("") +
     `</ul>`;
-  const headCtx = { title: `${title} – ${property.name}`, description, canonical: url(property, canonicalPath), siteName: property.name };
+  const headCtx = { title: `${title} – ${property.name}`, description, canonical: url(property, canonicalPath), siteName: property.name, ...(noindex ? { noindex: true } : {}) };
   return documentShell(property, headCtx, body);
 }
+
+/** A tag held by fewer posts than this is a thin page: it is kept for readers but not offered to search. */
+export const THIN_TAG_POSTS = 2;
 
 /**
  * Render a tag page.
@@ -506,7 +584,7 @@ function renderPostListPage(property, title, description, canonicalPath, posts) 
  * @returns {string}
  */
 export function renderTagPage(property, tag, posts) {
-  return renderPostListPage(property, `Tag: ${tag.title}`, `${posts.length} stories tagged ${tag.title}.`, `/tags/${tag.slug}/`, posts);
+  return renderPostListPage(property, `Tag: ${tag.title}`, `${posts.length} ${posts.length === 1 ? "story" : "stories"} tagged ${tag.title}.`, `/tags/${tag.slug}/`, posts, { noindex: posts.length < THIN_TAG_POSTS });
 }
 
 export function renderTopicPage(property, topic, posts) {
@@ -529,16 +607,43 @@ export function renderDeskPage(property, desk, posts) {
 }
 
 /**
- * Render an author page.
+ * Render an author page: a ProfilePage whose subject is the byline, with the
+ * byline's own statement of whether it is a person or an AI character.
  * @param {object} property
  * @param {{slug:string,name:string,bio?:string}} author
  * @param {object[]} posts posts bylined to this author, newest first
  * @returns {string}
  */
 export function renderAuthorPage(property, author, posts) {
-  const body = `<h1>${esc(author.name)}</h1>` + (author.bio ? `<p>${esc(author.bio)}</p>` : "") +
+  const profile = authorProfile(property, author.slug);
+  const statement = aiAuthorshipStatement(property, author);
+  const canonical = url(property, `/authors/${author.slug}/`);
+  const sectionTitles = [...new Set(posts.map((post) => post.sectionTitle).filter(Boolean))];
+  const tagCounts = new Map();
+  for (const post of posts) for (const tag of post.tags ?? []) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+  const topTags = [...tagCounts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 8).map(([tag]) => tag);
+  const knowsAbout = [...new Set([...(profile.knowsAbout ?? []), ...sectionTitles, ...topTags])];
+  const body = `<h1>${esc(author.name)}</h1>` +
+    (profile.jobTitle ? `<p class="author-role">${esc(profile.jobTitle)}, ${esc(property.name)}</p>` : "") +
+    (author.bio ? `<p>${esc(author.bio)}</p>` : "") +
+    (statement ? `<p class="author-disclosure"><strong>AI authorship.</strong> ${esc(statement)} <a href="/standards/">How we report</a> · <a href="/corrections/#report-an-error">Report an error</a></p>` : "") +
     `<div class="stories">${posts.map((post) => storyCard(post)).join("")}</div>`;
-  const headCtx = { title: `${author.name} – ${property.name}`, description: author.bio ?? "", canonical: url(property, `/authors/${author.slug}/`), siteName: property.name };
+  const headCtx = {
+    title: documentTitle(author.name, property.name), description: author.bio ?? statement ?? "", canonical, siteName: property.name,
+    jsonLd: profilePageJsonLd({
+      url: canonical,
+      dateModified: latestModified(posts.map(postInstants)),
+      entity: {
+        type: "Person",
+        name: author.name,
+        description: statement ?? author.bio,
+        jobTitle: profile.jobTitle,
+        sameAs: profile.sameAs,
+        knowsAbout,
+      },
+      worksFor: { name: property.name, url: `${property.origin}/` },
+    }),
+  };
   return documentShell(property, headCtx, body);
 }
 
@@ -593,10 +698,36 @@ export function renderMastheadPage(property) {
 }
 
 /** Render a static text page with already-escaped body HTML. */
-export function renderStaticPage(property, title, path, bodyHtml, { description = title } = {}) {
+export function renderStaticPage(property, title, path, bodyHtml, { description = title, jsonLd } = {}) {
   const body = `<h1>${esc(title)}</h1>${bodyHtml}`;
-  const headCtx = { title: `${title} – ${property.name}`, description, canonical: url(property, path), siteName: property.name };
+  const headCtx = { title: `${title} – ${property.name}`, description, canonical: url(property, path), siteName: property.name, ...(jsonLd ? { jsonLd } : {}) };
   return documentShell(property, headCtx, body);
+}
+
+/**
+ * Render `/contact/`: how to reach the newsroom, stated from the property's
+ * own configuration. Nothing here promises a reply it cannot keep.
+ * @param {object} property
+ */
+export function renderContactPage(property) {
+  const email = property.masthead?.contactEmail ?? property.contactEmail ?? "nik@koios.news";
+  const publisher = (typeof property.masthead?.publisher === "string" ? property.masthead.publisher : property.masthead?.publisher?.name) ?? property.name;
+  const advertising = hasAdvertisingInventory(property)
+    ? `<h2>Advertising</h2><p>Advertising and sponsorship inquiries: see <a href="/advertise/">Advertise</a>.</p>` : "";
+  const bodyHtml = `<p>${esc(property.name)} is published by ${esc(publisher)}.</p>` +
+    `<h2>Newsroom</h2><p>Tips, press inquiries and questions about the reporting: <a href="mailto:${esc(email)}">${esc(email)}</a>. ` +
+    `${esc(property.name)}'s reporting is produced with AI under independent editorial assessment, so a reply may come from an automated editorial process and a response time is not guaranteed.</p>` +
+    `<h2>Errors and corrections</h2><p>If an article is wrong, <a href="/corrections/#report-an-error">report the error</a>. Corrections are published on the <a href="/corrections/">corrections page</a> and on the article itself.</p>` +
+    advertising +
+    `<h2>Policies</h2><p><a href="/standards/">Editorial standards</a> · <a href="/masthead/">Masthead</a> · <a href="/about/">About</a></p>`;
+  return renderStaticPage(property, "Contact", "/contact/", bodyHtml, {
+    description: `How to contact the ${property.name} newsroom, report an error, or ask about advertising.`,
+    jsonLd: {
+      "@context": "https://schema.org", "@type": "ContactPage", name: `Contact ${property.name}`, url: url(property, "/contact/"),
+      about: { "@type": "NewsMediaOrganization", name: property.name, url: `${property.origin}/`,
+        contactPoint: [{ "@type": "ContactPoint", contactType: "editorial", email, availableLanguage: property.language ?? "en" }] },
+    },
+  });
 }
 
 /**
@@ -607,7 +738,7 @@ export function renderStaticPage(property, title, path, bodyHtml, { description 
 export function renderSearchPage(property) {
   const body = `<h1>Search</h1>` +
     `<p>Find reporting by subject, person or place. Search includes the article text.</p>` +
-    `<form id="search-form" class="search-form" role="search"><label for="search-q">Search articles</label>` +
+    `<form id="search-form" class="search-form" role="search" aria-label="Search ${esc(property.name)}"><label for="search-q">Search articles</label>` +
     `<input id="search-q" type="search" name="q" placeholder="Search ${esc(property.name)}">` +
     `<label for="search-section">News desk</label><select name="section" id="search-section"><option value="">All desks</option>${(property.sections ?? []).map(section => `<option value="${esc(section.slug)}">${esc(section.title)}</option>`).join("")}</select>` +
     `<label for="search-sort">Sort by</label><select name="sort" id="search-sort"><option value="relevance">Relevance</option><option value="newest">Newest first</option></select><button type="submit">Search</button></form>` +

@@ -16,7 +16,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { buildTheme } from "./render/theme.mjs";
 import { renderArticleArtSvg, articleArtAlt } from "./render/article-art.mjs";
-import { renderArticleFingerprint, renderBrandPng } from "./render/article-fingerprint.mjs";
+import { renderArticleFingerprint, renderBrandPng, renderBrandLogoPng, fingerprintCropImages } from "./render/article-fingerprint.mjs";
 import { renderCoverage, renderNinjs, renderPublicationProvenance, renderSourceRoll } from "./render/public-records.mjs";
 import { renderMarkdown, renderArticleMarkdown, escapeHtml } from "./render/markdown.mjs";
 import { faviconSvg, webManifest, absoluteUrl } from "./render/head.mjs";
@@ -32,10 +32,13 @@ import { selectArticleHeroImage } from "./render/hero-policy.mjs";
 import {
   renderHomePage, renderSectionPage, renderArticlePage, renderSyndicatedArticle, renderDeskPage, renderAuthorPage,
   renderTagPage, renderTopicPage, renderArchiveIndexPage, renderArchiveYearPage, renderArchiveMonthPage,
-  renderMastheadPage, renderStaticPage, renderSearchPage, render404Page, documentShell,
+  renderMastheadPage, renderStaticPage, renderContactPage, renderSearchPage, render404Page, documentShell, THIN_TAG_POSTS,
 } from "./render/templates.mjs";
 import { slugify } from "@red-cup-engineering/computer-text-content-engineering-services-section/slugify-text";
 import { articleCitation } from "./render/article-citation.mjs";
+import { readPublicationEvidence, resolvePublicationInstants, latestModified } from "./publication-instants.mjs";
+import { deskBylineSections, isDeskByline } from "./render/authors.mjs";
+import { renderLlmsTxt, renderLlmsFullTxt } from "./render/llms.mjs";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/u;
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?$/u;
@@ -44,6 +47,10 @@ const XML_INVALID_CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
 const STRUCTURED_ARRAY_FIELDS = new Set(["claims", "omissions", "corrections"]);
 const STRING_ARRAY_FIELDS = new Set(["categories", "tags", "keywords"]);
 const PAGE_SIZE = 12;
+/** Paths whose file names carry a digest of their bytes, and so may be cached forever. */
+const IMMUTABLE_PATHS = Object.freeze(["/assets/h/*", "/fingerprints/h/*"]);
+/** Site assets that are also published under a content-addressed name. */
+const HASHED_ASSETS = Object.freeze(["assets/site.css", "assets/search.js", "assets/share.js", "assets/house-ad.js"]);
 
 const digest = (bytes) => sha256Hex(bytes);
 const bytewise = (left, right) => Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
@@ -472,7 +479,7 @@ function groupTaxonomy(posts, field) {
 }
 
 function publicPost(post, property) {
-  return { slug: post.slug, title: post.title, url: absoluteUrl(property.origin, `/posts/${post.slug}`), published: post.publishedAt ?? post.date };
+  return { slug: post.slug, title: post.title, url: absoluteUrl(property.origin, `/posts/${post.slug}`), published: post.publishedInstant ?? post.publishedAt ?? post.date };
 }
 
 function groupBibliography(posts, property) {
@@ -549,12 +556,17 @@ function assetHeaders(property) {
     // /posts/* also prices nested citation.json and auxiliary source routes.
     articlePrice = `\n/posts/:slug/\n  Crawler-Price: USD ${crawl.articlePriceUsd}\n`;
   }
+  // Only content-addressed paths are immutable: their URL changes whenever
+  // their bytes do. The legacy names (`/assets/site.css`, `/fingerprints/<slug>.png`)
+  // stay mutable. Cloudflare merges every matching rule, so these rules carry
+  // nothing but their own header.
+  const immutable = IMMUTABLE_PATHS.map((path) => `\n${path}\n  Cache-Control: public, max-age=31536000, immutable\n`).join("");
   return `/*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'${adOrigin}; frame-src 'self'${aadsOrigin}; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-` + articlePrice;
+` + articlePrice + immutable;
 }
 
 /**
@@ -595,11 +607,16 @@ export function declaredPropertyInputs(property, propertyDir, { stateRoot, envir
   if (published !== undefined && (typeof published !== "string" || published.trim() === "" || isAbsolute(published) || published.split(/[\\/]/u).includes(".."))) {
     throw new TypeError("property.content.publishedPosts must be a path inside the property state root");
   }
+  const evidence = property.content.publicationEvidence;
+  if (evidence !== undefined && (typeof evidence !== "string" || evidence.trim() === "" || isAbsolute(evidence) || evidence.split(/[\\/]/u).includes(".."))) {
+    throw new TypeError("property.content.publicationEvidence must be a path inside the property state root");
+  }
   return Object.freeze({
     contentDir: resolve(propertyDir, root),
     ...((environment.NEWS_PROPERTY_CLAIM_STORE ?? property.content.claimStore) ? { claimStoreDir: resolve(propertyDir, environment.NEWS_PROPERTY_CLAIM_STORE ?? property.content.claimStore) } : {}),
     ...((environment.NEWS_PROPERTY_SOURCE_FEEDS ?? property.content.sourceFeeds) ? { sourceFeedsPath: (environment.NEWS_PROPERTY_SOURCE_FEEDS ?? property.content.sourceFeeds).startsWith("@") ? createRequire(join(realpathSync(resolve(propertyDir)), "property-inputs.mjs")).resolve(environment.NEWS_PROPERTY_SOURCE_FEEDS ?? property.content.sourceFeeds) : resolve(propertyDir, environment.NEWS_PROPERTY_SOURCE_FEEDS ?? property.content.sourceFeeds) } : {}),
     ...(published ? { publishedPostsDir: resolve(stateRoot ?? propertyStateRoot(property), published) } : {}),
+    ...(evidence ? { publicationEvidenceDir: resolve(stateRoot ?? propertyStateRoot(property), evidence) } : {}),
   });
 }
 
@@ -614,7 +631,7 @@ export function propertyStateRoot(property, environment = process.env) {
   return join(environment.XDG_STATE_HOME || join(homedir(), ".local", "state"), "561-group", "news-property", property.name);
 }
 
-export function buildProperty({ property, contentDir, outputDir, claimStoreDir, sourceFeedsPath, publishedPostsDir, asOf = new Date() }) {
+export function buildProperty({ property, contentDir, outputDir, claimStoreDir, sourceFeedsPath, publishedPostsDir, publicationEvidenceDir, asOf = new Date() }) {
   if (typeof property !== "object" || property === null) throw new TypeError("property is required");
   if (typeof contentDir !== "string" || typeof outputDir !== "string") throw new TypeError("contentDir and outputDir are required");
   const postsDirectory = property.content?.postsDirectory ?? "posts";
@@ -623,6 +640,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
   const recordKind = (name) => `${recordNamespace}.${name}/v1`;
   const posts = readPosts(resolve(contentDir), property.content?.legacyPublishedSections, postsDirectory, property.content?.defaultPublishedSection, publishedPostsDir, property.content?.editorialProjections, property.content?.requirePublishedLedger === true);
   const sections = new Map((property.sections ?? []).map((section) => [section.slug, section]));
+  const publicationEvidence = readPublicationEvidence(publicationEvidenceDir);
   const enriched = posts.map((post) => {
     const section = sections.get(post.section);
     if (section === undefined) throw new Error(`${post.file}: unknown section "${post.section}"`);
@@ -630,10 +648,18 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
     return {
       ...post,
       ...hero,
+      ...resolvePublicationInstants(post, publicationEvidence.get(post.slug)),
       sectionTitle: section.title,
       ogImage: resolveOgImage({ ...post, image: hero.image }, property, contentDir),
     };
   });
+
+  // One canonical address per byline: a desk byline is the desk page of the
+  // section it files to most; a named character is its author page.
+  const deskSections = deskBylineSections(property, enriched);
+  for (const post of enriched) {
+    post.authorPath = deskSections.has(post.authorSlug) ? `/desks/${deskSections.get(post.authorSlug)}/` : `/authors/${post.authorSlug}/`;
+  }
 
   const theme = buildTheme(property.theme);
   const files = new Map();
@@ -687,6 +713,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
   if (property.monetization?.houseAds?.server) set("assets/house-ad.js", houseAdClientScript());
   set("favicon.svg", faviconSvg(property.name, theme.seeds.accent, theme.seeds.ink));
   set("og.png", renderBrandPng(property));
+  set("logo.png", renderBrandLogoPng(property));
   set("manifest.webmanifest", `${JSON.stringify(webManifest({ name: property.name, accent: theme.seeds.accent, surface: theme.seeds.surface }), null, 2)}\n`);
   for (const post of enriched) {
     if (post.image === `/assets/article-art/${post.slug}.svg`) {
@@ -698,7 +725,9 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
         palette: theme.seeds,
       }));
     }
-    for (const [path, contents] of renderArticleFingerprint(post, property)) set(path, contents);
+    const fingerprint = renderArticleFingerprint(post, property);
+    for (const [path, contents] of fingerprint) set(path, contents);
+    post.schemaImages = fingerprintCropImages(fingerprint, post.slug, property.origin);
   }
   set("coverage.json", renderCoverage(enriched, property));
   set("ninjs.json", renderNinjs(enriched, property, citationRenderer));
@@ -768,11 +797,18 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
     setAlias(`authors/${slug}/index.html`, target);
   }
   const authorSlugs = new Set(enriched.map((post) => post.authorSlug));
+  const authorPostsBySlug = new Map();
   for (const authorSlug of authorSlugs) {
     const name = enriched.find((post) => post.authorSlug === authorSlug)?.author ?? authorSlug;
-    const record = { slug: authorSlug, name, bio: property.masthead?.bylineDescriptions?.[authorSlug] ??
-      (name.startsWith(`${property.name} `) && name.endsWith(" Desk") ? "A coverage desk byline, not an individual employee. See the masthead for our publishing method." : "") };
     const authorPosts = enriched.filter((post) => post.authorSlug === authorSlug);
+    if (isDeskByline(property, name)) {
+      // A desk byline has no profile of its own; its old address is the desk.
+      const deskPath = `authors/${authorSlug}/index.html`;
+      if (!redirects.has(`/authors/${authorSlug}/`)) setAlias(deskPath, `/desks/${deskSections.get(authorSlug)}/`);
+      continue;
+    }
+    const record = { slug: authorSlug, name, bio: property.masthead?.bylineDescriptions?.[authorSlug] ?? "" };
+    authorPostsBySlug.set(authorSlug, authorPosts);
     set(`authors/${authorSlug}/index.html`, renderAuthorPage(property, record, authorPosts));
   }
 
@@ -871,6 +907,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
   }
 
   set("masthead/index.html", renderMastheadPage(property));
+  set("contact/index.html", renderContactPage(property));
   const mastheadPublisher = property.masthead?.publisher;
   const publisherName = typeof mastheadPublisher === "string" ? mastheadPublisher : mastheadPublisher?.name ?? property.name;
   const editorialMethod = property.masthead?.editorialMethod ?? "";
@@ -935,7 +972,7 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
   setJson("operations.json", { kind: recordKind("static-operations"),
     provenance: { carrier: "@red-cup-engineering/news-property", canonicalOrigin: property.origin,
       operationsInput: null, generatedAt: "deterministic-from-input" },
-    publicPostCount: enriched.length, newestPublished: enriched[0]?.publishedAt ?? enriched[0]?.date ?? null,
+    publicPostCount: enriched.length, newestPublished: enriched[0]?.publishedInstant ?? enriched[0]?.publishedAt ?? enriched[0]?.date ?? null,
     status: "generated-without-operations-input" });
   set("operations/index.html", renderStaticPage(property, "Publication operations", "/operations/",
     `<p>${enriched.length} published articles in this build. Most recent article: ${escapeHtml(enriched[0]?.date ?? "none")}.</p><p>This static build does not attest that automated publishing is running.</p>`));
@@ -944,19 +981,67 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
     provenance: { carrier: "@red-cup-engineering/news-property", canonicalOrigin: property.origin,
       inputOrder: "publication instant or date descending then slug", generatedAt: "deterministic-from-input" },
     posts: enriched.map((post) => ({ slug: post.slug, url: absoluteUrl(property.origin, `/posts/${post.slug}`),
-      published: post.publishedAt ?? post.date, sourceSha256: post.sourceDigest, status: "published-front-matter-draft-false", categories: post.categories })),
+      published: post.publishedInstant ?? post.publishedAt ?? post.date, sourceSha256: post.sourceDigest, status: "published-front-matter-draft-false", categories: post.categories })),
   }, null, 2)}\n`);
+
+  set("llms.txt", renderLlmsTxt(property, enriched));
+  set("llms-full.txt", renderLlmsFullTxt(property, enriched));
+
+  // Content-addressed copies of the site assets, and the pages that point to
+  // them. The unhashed names stay published for links that predate them.
+  const hashedAssetPaths = new Map();
+  for (const path of HASHED_ASSETS) {
+    if (!files.has(path)) continue;
+    const contents = files.get(path);
+    const dot = path.lastIndexOf(".");
+    const hashed = `assets/h/${path.slice("assets/".length, dot)}.${digest(contents).slice(0, 16)}${path.slice(dot)}`;
+    set(hashed, contents);
+    hashedAssetPaths.set(`"/${path}"`, `"/${hashed}"`);
+  }
+  for (const [path, contents] of [...files]) {
+    if (!path.endsWith(".html") || typeof contents !== "string") continue;
+    let rewritten = contents;
+    for (const [from, to] of hashedAssetPaths) rewritten = rewritten.split(from).join(to);
+    if (rewritten !== contents) files.set(path, rewritten);
+  }
 
   const dated = (path, date) => ({
     path: `/${path === "index.html" ? "" : path.replace(/index\.html$/u, "")}`,
     ...(date ? { lastmod: date } : {}),
   });
+  // A page's lastmod is the newest revision among the articles it shows;
+  // a page that shows no article (policy, search) has no witnessed revision.
+  const allLastmod = latestModified(enriched);
+  const taxonomyPosts = (list) => new Map(list.map((entry) => [entry.slug, entry.posts]));
+  const tagPosts = taxonomyPosts(tags);
+  const topicPosts = taxonomyPosts(topics);
+  const archivePosts = new Map();
+  for (const year of archive) {
+    archivePosts.set(`archive/${year.year}/index.html`, year.months.flatMap((month) => month.posts));
+    for (const month of year.months) archivePosts.set(`archive/${year.year}/${month.month}/index.html`, month.posts);
+  }
+  const hubLastmod = (path) => {
+    if (["index.html", "desks/index.html", "tags/index.html", "topics/index.html", "archive/index.html", "bibliography/index.html"].includes(path)) return allLastmod;
+    if (path === "corrections/index.html") return latestModified(enriched.filter((post) => post.corrections.length > 0));
+    let match = /^(?:sections|desks)\/([^/]+)\/(?:page\/\d+\/)?index\.html$/u.exec(path);
+    if (match) return latestModified(bySection.get(match[1]) ?? []);
+    match = /^tags\/([^/]+)\/index\.html$/u.exec(path);
+    if (match) return latestModified(tagPosts.get(match[1]) ?? []);
+    match = /^topics\/([^/]+)\/index\.html$/u.exec(path);
+    if (match) return latestModified(topicPosts.get(match[1]) ?? []);
+    match = /^authors\/([^/]+)\/index\.html$/u.exec(path);
+    if (match) return latestModified(authorPostsBySlug.get(match[1]) ?? []);
+    return archivePosts.has(path) ? latestModified(archivePosts.get(path)) : undefined;
+  };
+  // A tag held by a single article is a thin page: reachable, but noindex and
+  // not offered to crawlers in the sitemap.
+  const thinTagPaths = new Set(tags.filter((tag) => tag.posts.length < THIN_TAG_POSTS).map((tag) => `tags/${tag.slug}/index.html`));
   const claimRecordPage = (path) => /^claims\/[^/]+\/[^/]+\/index\.html$/u.test(path);
   const sitemapEntries = [...files.keys()]
-    .filter((path) => path.endsWith(".html") && path !== "404.html" && !aliasPaths.has(path) && !claimRecordPage(path))
+    .filter((path) => path.endsWith(".html") && path !== "404.html" && !aliasPaths.has(path) && !claimRecordPage(path) && !thinTagPaths.has(path))
     .map((path) => {
       const post = enriched.find((candidate) => articlePath(candidate) === path);
-      return dated(path, post?.modified ?? post?.publishedAt ?? post?.date);
+      return dated(path, post ? post.modifiedInstant : hubLastmod(path));
     });
   set("sitemap.xml", renderSitemap(sitemapEntries, property));
   set("news-sitemap.xml", renderNewsSitemap(enriched, property, asOf));
@@ -1002,8 +1087,8 @@ export function buildProperty({ property, contentDir, outputDir, claimStoreDir, 
 function feedPost(post) {
   return {
     slug: post.slug, title: post.title, description: post.description, author: post.author,
-    date: post.publishedAt ?? `${post.date}T00:00:00Z`, categories: [...post.categories, ...post.tags], image: post.ogImage,
-    ...(post.modified ? { modified: post.modified.includes("T") ? post.modified : `${post.modified}T00:00:00Z` } : {}),
+    date: post.publishedInstant, categories: [...post.categories, ...post.tags], image: post.ogImage,
+    ...(post.modifiedInstant !== post.publishedInstant ? { modified: post.modifiedInstant } : {}),
   };
 }
 

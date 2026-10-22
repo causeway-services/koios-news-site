@@ -6,6 +6,7 @@
   "locale": "en_US",
   "timezone": "America/Los_Angeles",
   "masthead": {
+    "authorProfiles": { "nik-koios": { "kind": "ai", "jobTitle": "AI Editor-in-Chief", "sameAs": ["https://bsky.app/profile/koios.news"] } },
     "standardsEditor": { "name": "Standards Desk", "office": { "name": "Standards Office", "mandate": "Owns the deterministic gate profile and the standards page." } },
     "correctionsEditor": { "name": "Corrections Desk", "office": { "name": "Corrections Office", "mandate": "Owns the correction transaction, independent of the top editor." } },
     "publisher": { "name": "Nik Koios", "office": { "name": "Publisher's Office", "mandate": "Owns monetization and the ad contracts." } },

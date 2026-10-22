@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 function jsonLdObjects(html) {
   return [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu)]
-    .map((match) => JSON.parse(match[1]));
+    .flatMap((match) => { const value = JSON.parse(match[1]); return Array.isArray(value) ? value : [value]; });
 }
 
 test("article structured data exposes accepted source citations", () => {
@@ -97,7 +97,8 @@ test("ordinary Ninjs artifact preserves source metadata and canonical identity",
     assert.ok(item);
     assert.equal(item.by, "Nik Koios");
     assert.equal(item.language, "en");
-    assert.equal(item.firstCreated, "2025-02-15T00:00:00Z");
+    // The article records only its calendar day, so its instant is the documented noon-UTC stand-in.
+    assert.equal(item.firstCreated, "2025-02-15T12:00:00Z");
     assert.match(item.bodies[0].value, /Koios.News/);
     assert.ok(item.subjects.some((subject) => subject.rel === "section" && subject.name === "technology"));
     assert.ok(item.subjects.some((subject) => subject.rel === "keyword" && subject.name === "autonomous newsroom"));
@@ -120,7 +121,7 @@ test("a corrected Ninjs artifact keeps its identity and first publication time",
     assert.equal(after[0].firstCreated, before.firstCreated);
     assert.deepEqual(after[0].altIds, before.altIds);
     assert.deepEqual(after[0].organisations, [{ name: "The source publisher", rel: "publisher" }]);
-    assert.equal(after[0].versionCreated, "2026-07-19T12:00:00.000Z");
+    assert.equal(after[0].versionCreated, "2026-07-19T12:00:00Z");
     assert.notEqual(after[0].versionCreated, before.versionCreated);
     assert.match(after[0].bodies[0].value, /A witnessed correction/);
   });

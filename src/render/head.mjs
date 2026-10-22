@@ -21,7 +21,8 @@ export function absoluteUrl(origin, path) {
 
 /**
  * @typedef {object} HeadContext
- * @property {string} title
+ * @property {string} title the document `<title>`
+ * @property {string} [socialTitle] the Open Graph and Twitter title; defaults to `title`
  * @property {string} description
  * @property {string} canonical absolute canonical URL
  * @property {string} [ogType] "website" or "article"; defaults to "website"
@@ -47,10 +48,15 @@ export function absoluteUrl(origin, path) {
  */
 export function socialMetaTags(ctx) {
   return pageSocialMetaTags({
-    type: ctx.ogType ?? "website", siteName: ctx.siteName, title: ctx.title, description: ctx.description, url: ctx.canonical, locale: ctx.locale,
+    type: ctx.ogType ?? "website", siteName: ctx.siteName, title: ctx.socialTitle ?? ctx.title, description: ctx.description, url: ctx.canonical, locale: ctx.locale,
     ...(ctx.ogImage ? { images: [{ url: ctx.ogImage, ...(ctx.ogImageAlt ? { alt: ctx.ogImageAlt } : {}), width: ctx.ogImageWidth ?? 1200, height: ctx.ogImageHeight ?? 630 }] } : {}),
     publishedTime: ctx.articlePublishedTime, modifiedTime: ctx.articleModifiedTime, section: ctx.articleSection, tags: ctx.articleTags,
   });
+}
+
+/** An ImageObject node; width and height only when they are known facts. */
+function imageObject(image) {
+  return { "@type": "ImageObject", url: image.url, ...(image.width ? { width: image.width } : {}), ...(image.height ? { height: image.height } : {}) };
 }
 
 /**
@@ -59,30 +65,107 @@ export function socialMetaTags(ctx) {
  * @param {string} input.headline
  * @param {string} input.url
  * @param {string} [input.image] absolute image URL
- * @param {string} input.datePublished ISO 8601
- * @param {string} input.dateModified ISO 8601
- * @param {{name:string,url?:string}} input.author
- * @param {{name:string,url:string,logo:string}} input.publisher
+ * @param {{url:string,width?:number,height?:number}[]} [input.images] ImageObject crops (1x1, 4x3, 16x9); wins over `image`
+ * @param {string} input.datePublished ISO 8601 instant with zone
+ * @param {string} input.dateModified ISO 8601 instant with zone
+ * @param {{name:string,url?:string,type?:string,jobTitle?:string,description?:string,sameAs?:string[]}} input.author
+ * @param {{name:string,url:string,logo:string|{url:string,width?:number,height?:number}}} input.publisher
  * @param {string} [input.description]
  * @param {string} [input.articleSection]
+ * @param {string} [input.inLanguage]
  * @param {string[]} [input.keywords]
  * @param {{url:string}[]} [input.citations]
  * @param {string} [input.licenseUrl] HTTPS rights declaration from accepted manuscript
+ * @param {string} [input.speakableSelector] CSS selector of the text a voice assistant may read aloud
  * @returns {object}
  */
 export function newsArticleJsonLd(input) {
   const citations = [...new Set((input.citations ?? []).map((citation) => citation.url).filter(Boolean))];
+  const logo = typeof input.publisher.logo === "string" ? { url: input.publisher.logo } : input.publisher.logo;
+  const author = input.author;
   return {
     ...creativeWork({
       type: "NewsArticle", url: input.url, headline: input.headline, image: input.image, datePublished: input.datePublished, dateModified: input.dateModified,
       author: input.author, publisher: input.publisher, description: input.description, articleSection: input.articleSection, keywords: input.keywords,
     }),
+    ...(input.inLanguage ? { inLanguage: input.inLanguage } : {}),
+    ...(input.articleSection ? { articleSection: input.articleSection } : {}),
+    // The same entities as the page's visible byline, with the properties a
+    // knowledge graph needs to resolve them: a profile URL, a role, and sameAs.
+    author: {
+      "@type": author.type === "Organization" ? "Organization" : "Person", name: author.name,
+      ...(author.url ? { url: author.url } : {}),
+      ...(author.jobTitle ? { jobTitle: author.jobTitle } : {}),
+      ...(author.description ? { description: author.description } : {}),
+      ...(author.sameAs?.length ? { sameAs: author.sameAs } : {}),
+    },
+    publisher: { "@type": "Organization", ...(input.publisher.id ? { "@id": input.publisher.id } : {}), name: input.publisher.name, url: input.publisher.url, ...(logo ? { logo: imageObject(logo) } : {}) },
+    ...(input.images?.length ? { image: input.images.map(imageObject) } : {}),
     // Identifiers and rights are projections of already-admitted editorial data,
     // not newly inferred licenses or subscription requirements.
     mainEntityOfPage: { "@type": "WebPage", "@id": input.url },
     isAccessibleForFree: true,
+    ...(input.speakableSelector ? { speakable: { "@type": "SpeakableSpecification", cssSelector: [input.speakableSelector] } } : {}),
     ...(input.licenseUrl ? { license: input.licenseUrl } : {}),
     ...(citations.length ? { citation: citations } : {}),
+  };
+}
+
+/**
+ * A schema.org BreadcrumbList for a page's trail, in order, from the site root.
+ * @param {{name:string,url:string}[]} trail
+ * @returns {object}
+ */
+export function breadcrumbListJsonLd(trail) {
+  return {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: trail.map((crumb, index) => ({ "@type": "ListItem", position: index + 1, name: crumb.name, item: crumb.url })),
+  };
+}
+
+/**
+ * The home page's WebSite node, with a SearchAction aimed at the property's
+ * own client-side search page (`/search/?q=...`).
+ * @param {object} input
+ * @param {string} input.name
+ * @param {string} input.url site root, with trailing slash
+ * @param {string} input.searchUrlTemplate absolute URL containing `{search_term_string}`
+ * @param {string} [input.inLanguage]
+ * @param {string} [input.description]
+ * @returns {object}
+ */
+export function webSiteJsonLd(input) {
+  return {
+    "@context": "https://schema.org", "@type": "WebSite", "@id": `${input.url}#website`, name: input.name, url: input.url,
+    ...(input.description ? { description: input.description } : {}),
+    ...(input.inLanguage ? { inLanguage: input.inLanguage } : {}),
+    ...(input.publisherId ? { publisher: { "@id": input.publisherId } } : {}),
+    potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: input.searchUrlTemplate }, "query-input": "required name=search_term_string" },
+  };
+}
+
+/**
+ * An author's ProfilePage, with the author as its main entity.
+ * @param {object} input
+ * @param {string} input.url canonical profile URL
+ * @param {string} [input.dateModified] newest revision among the author's articles
+ * @param {{name:string,type?:string,jobTitle?:string,description?:string,sameAs?:string[],knowsAbout?:string[]}} input.entity
+ * @param {{name:string,url:string}} input.worksFor
+ * @returns {object}
+ */
+export function profilePageJsonLd(input) {
+  const entity = input.entity;
+  return {
+    "@context": "https://schema.org", "@type": "ProfilePage", "@id": `${input.url}#profile`, url: input.url,
+    name: entity.name, ...(input.dateModified ? { dateModified: input.dateModified } : {}),
+    mainEntity: {
+      "@type": entity.type === "Organization" ? "Organization" : "Person", "@id": `${input.url}#author`, name: entity.name, url: input.url,
+      ...(entity.jobTitle ? { jobTitle: entity.jobTitle } : {}),
+      ...(entity.description ? { description: entity.description } : {}),
+      ...(entity.sameAs?.length ? { sameAs: entity.sameAs } : {}),
+      ...(entity.knowsAbout?.length ? { knowsAbout: entity.knowsAbout } : {}),
+      worksFor: { "@type": "NewsMediaOrganization", name: input.worksFor.name, url: input.worksFor.url },
+    },
   };
 }
 
@@ -164,7 +247,7 @@ export function faviconSvg(siteName, accent, ink) {
  */
 export function webManifest(input) {
   return webAppManifest({ name: input.name, shortName: input.name, backgroundColor: input.surface, themeColor: input.accent,
-    icons: [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml" }] });
+    icons: [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml" }, { src: "/logo.png", sizes: "512x512", type: "image/png" }] });
 }
 
 /**
