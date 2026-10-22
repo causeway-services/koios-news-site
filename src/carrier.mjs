@@ -695,10 +695,23 @@ function previewReceipt(path, candidate, binding) {
   );
   exact(receipt.probe.notFound?.status, 404, "preview missing-route status");
   exact(receipt.probe.notFound?.sha256, sha256Hex(readFileSync(join(candidate.root, "404.html"))), "preview missing-route body");
-  if (
-    !Array.isArray(receipt.probe.artifacts) ||
-    receipt.probe.artifacts.length === 0
-  ) throw new Error("preview probe lacks representative sealed assets");
+  if (!Array.isArray(receipt.probe.artifacts)) {
+    throw new Error("preview probe lacks representative sealed assets");
+  }
+  const selected = previewReceivingArtifacts(candidate);
+  const observed = new Map();
+  for (const entry of receipt.probe.artifacts) {
+    if (!object(entry) || typeof entry.file !== "string" || observed.has(entry.file)) {
+      throw new Error("preview probe has duplicate or invalid evidence");
+    }
+    observed.set(entry.file, entry);
+  }
+  for (const expected of selected) {
+    const entry = observed.get(expected.file);
+    if (!entry || entry.sha256 !== expected.sha256 || entry.bytes !== expected.bytes) {
+      throw new Error(`preview probe did not receive mandatory sealed route: ${expected.file}`);
+    }
+  }
   const redirects = configuredRedirects(candidate);
   if (!Array.isArray(receipt.probe.redirects) || receipt.probe.redirects.length !== redirects.length ||
       redirects.some((rule, index) => receipt.probe.redirects[index]?.source !== rule.source ||
@@ -1374,6 +1387,52 @@ async function fetchMissingRoute(base, candidate, fetchImpl) {
   }
   throw lastError;
 }
+/**
+ * Source-owned preview assurance: exact public routes matter more than three
+ * arbitrary manifest indices. Keep the existing representative sample, and
+ * additionally receive the home, correction intake, a real article and every
+ * withdrawn notice (when the original published build contains any).
+ *
+ * Only the original sealed candidate's paths and bytes qualify. The probe
+ * adds no route, article, editor, authority or independent store.
+ */
+function previewReceivingArtifacts(candidate) {
+  const listed = candidate.manifest.artifacts.filter(({ file }) =>
+    file !== "_headers" && file !== "_redirects");
+  const byFile = new Map(listed.map(entry => [entry.file, entry]));
+  for (const required of ["index.html", "corrections/index.html"]) {
+    if (!byFile.has(required)) throw new Error(`preview candidate lacks public receiving route: ${required}`);
+  }
+  const articles = listed.filter(({ file }) => /^posts\/[a-z0-9-]+\/index\.html$/u.test(file));
+  const withdrawn = [];
+  let firstPublished;
+  for (const entry of articles) {
+    const html = readFileSync(join(candidate.root, entry.file), "utf8");
+    if (!/<h1>Article unavailable<\/h1>/u.test(html)) {
+      firstPublished ??= entry;
+      continue;
+    }
+    const canonical = `https://koios.news/${entry.file.slice(0, -"index.html".length)}`;
+    if (!html.includes('<a class="skip-to-content" href="#main-content">Skip to content</a>')
+      || !html.includes('<main id="main-content" tabindex="-1" role="main">')
+      || (html.match(/id="main-content"/gu) ?? []).length !== 1
+      || !html.includes('<meta name="robots" content="noindex, follow">')
+      || !html.includes(`<link rel="canonical" href="${canonical}">`)
+      || !html.includes('href="/corrections/"')
+      || !html.includes('href="/archive/"')
+      || /data-slot=|data-aa=|\/assets\/house-ad\.js|<iframe|NewsArticle/u.test(html)) {
+      throw new Error(`preview withdrawn-notice assurance failed: ${entry.file}`);
+    }
+    withdrawn.push(entry);
+  }
+  const candidates = [
+    listed[0], listed[Math.floor(listed.length / 2)], listed.at(-1),
+    byFile.get("index.html"), byFile.get("corrections/index.html"),
+    firstPublished, ...withdrawn,
+  ].filter(Boolean);
+  return Object.freeze([...new Map(candidates.map(entry => [entry.file, entry])).values()]);
+}
+
 export async function acceptPreviewProbe(
   { candidateDir, bindingPath, url, receiptOut, fetchImpl = fetch },
 ) {
@@ -1390,15 +1449,7 @@ export async function acceptPreviewProbe(
     throw new Error("served manifest bytes do not match the exact candidate");
   }
   const notFound = await fetchMissingRoute(base, candidate, fetchImpl);
-  const listed = candidate.manifest.artifacts.filter(({ file }) => file !== "_headers" && file !== "_redirects"),
-    representative = [
-      ...new Set([
-        listed[0],
-        listed[Math.floor(listed.length / 2)],
-        listed.at(-1),
-      ]),
-    ],
-    artifacts = [];
+  const representative = previewReceivingArtifacts(candidate), artifacts = [];
   for (const artifact of representative) {
     const bytes = await fetchExact(
       base,
