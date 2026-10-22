@@ -148,7 +148,7 @@ function siteFooter(property, options = {}) {
     '<a href="/sitemap.xml">Sitemap</a>',
     actor ? `<a rel="me" href="${esc(actor)}">${esc(actor.replace(/^https?:\/\//u, ""))}</a>` : "",
   ].filter(Boolean).join(" · ");
-  return `<footer role="contentinfo">${options.paidInventory ? adSlot(property, "footer") : houseAdSlot(property, "footer")}<div class="inner">` +
+  return `<footer role="contentinfo">${options.advertising === false ? "" : options.paidInventory ? adSlot(property, "footer") : houseAdSlot(property, "footer")}<div class="inner">` +
     `<span>© ${esc(String(year))} ${esc(property.name)}</span>${links}</div></footer>`;
 }
 
@@ -161,6 +161,7 @@ function siteFooter(property, options = {}) {
  * @param {string} [options.activeSlug] the active nav item, for `aria-current`
  * @param {string} [options.stylesheetHref] defaults to `/assets/site.css`
  * @param {boolean} [options.shareLinks] load the article sharing control
+ * @param {boolean} [options.advertising] false for editorially withdrawn/unavailable pages: no ad slot or client
  * @returns {string}
  */
 export function documentShell(property, headCtx, bodyHtml, options = {}) {
@@ -177,11 +178,11 @@ ${renderHeadTags({ ...headCtx, ogImage: headCtx.ogImage ?? absoluteUrl(property.
 <body>
 <a class="skip-to-content" href="#main-content">Skip to content</a>
 ${siteHeader(property, options.activeSlug)}
-<main id="main-content" role="main">
+<main id="main-content" tabindex="-1" role="main">
 ${bodyHtml}
 </main>
 ${siteFooter(property, options)}
-${options.shareLinks ? '<script src="/assets/share.js" defer></script>\n' : ""}${property.monetization?.houseAds?.server ? '<script src="/assets/house-ad.js" defer></script>' : ""}
+${options.shareLinks ? '<script src="/assets/share.js" defer></script>\n' : ""}${options.advertising !== false && property.monetization?.houseAds?.server ? '<script src="/assets/house-ad.js" defer></script>' : ""}
 </body>
 </html>
 `;
