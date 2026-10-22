@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/render/templates.mjs'
+      - 'src/carrier.mjs'
+      - 'test/carrier-probe-retry.test.mjs'
       - 'src/render/head.mjs'
       - 'test/structured-data.test.mjs'
       - 'package.json'
@@ -13,6 +15,8 @@ on:
     branches: [main]
     paths:
       - 'src/render/templates.mjs'
+      - 'src/carrier.mjs'
+      - 'test/carrier-probe-retry.test.mjs'
       - 'src/render/head.mjs'
       - 'test/structured-data.test.mjs'
       - 'package.json'
@@ -66,6 +70,8 @@ jobs:
           node --check src/render/templates.mjs
           node --check src/render/head.mjs
           node --check test/structured-data.test.mjs
+          node --check src/carrier.mjs
+          node --check test/carrier-probe-retry.test.mjs
       - name: Install original declared dependencies without substituting fixtures
         run: |
           corepack enable
