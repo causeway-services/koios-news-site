@@ -32,7 +32,7 @@ import { selectArticleHeroImage } from "./render/hero-policy.mjs";
 import {
   renderHomePage, renderSectionPage, renderArticlePage, renderSyndicatedArticle, renderDeskPage, renderAuthorPage,
   renderTagPage, renderTopicPage, renderArchiveIndexPage, renderArchiveYearPage, renderArchiveMonthPage,
-  renderMastheadPage, renderStaticPage, renderSearchPage, render404Page,
+  renderMastheadPage, renderStaticPage, renderSearchPage, render404Page, documentShell,
 } from "./render/templates.mjs";
 import { slugify } from "@red-cup-engineering/computer-text-content-engineering-services-section/slugify-text";
 import { articleCitation } from "./render/article-citation.mjs";
@@ -506,14 +506,21 @@ function groupBibliography(posts, property) {
   });
 }
 
+/**
+ * A withdrawn article is still a public-facing page. Reuse the original
+ * accessible document shell (one keyboard skip target and focusable main)
+ * without reviving published article markup, structured NewsArticle claims,
+ * or advertising inventory at an address whose article is unavailable.
+ */
 function unavailableArticle(property, slug) {
-  const url = escapeHtml(absoluteUrl(property.origin, `/posts/${slug}/`));
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, follow"><link rel="canonical" href="${url}">
-<title>Article unavailable — ${escapeHtml(property.name)}</title></head>
-<body><main><h1>Article unavailable</h1><p>This historical address previously served an article, but its source is currently marked as a draft. It is not part of the published ${escapeHtml(property.name)} corpus.</p>
-<p>For a question about this page, visit <a href="/corrections/">Corrections</a>. <a href="/archive/">Browse published articles</a>.</p></main></body></html>`;
+  const canonical = absoluteUrl(property.origin, `/posts/${slug}/`);
+  const title = `Article unavailable — ${property.name}`;
+  const body = `<h1>Article unavailable</h1><p>This historical address previously served an article, but its source is currently marked as a draft. It is not part of the published ${escapeHtml(property.name)} corpus.</p>
+<p>For a question about this page, visit <a href="/corrections/">Corrections</a>. <a href="/archive/">Browse published articles</a>.</p>`;
+  return documentShell(property, {
+    title, description: "This historical article address is not currently published.",
+    canonical, siteName: property.name, noindex: true,
+  }, body, { advertising: false });
 }
 
 function cspOrigin(value) {
