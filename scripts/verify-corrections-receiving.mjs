@@ -32,11 +32,17 @@ export async function verifyCorrectionsReceiving(origin,{fetcher=globalThis.fetc
     const url=new URL(path,root).href;
     let response;
     try {response=await fetcher(url,{cache:'no-store',redirect:'error',headers:{'cache-control':'no-cache'}});}
-    catch(error){fail(path+' transport: '+(error?.message||error));}
-    if(response.status!==200)fail(path+' HTTP '+response.status);
-    if(response.url&&response.url!==url)fail(path+' redirected unexpectedly');
+    catch {fail(path+' transport unavailable');}
+    // Transport/provider errors may include confidential tokens, mail paths or
+    // response fragments. Keep stage identity without echoing provider messages.
+    let status,receivedUrl;
+    try {status=response?.status;receivedUrl=response?.url;}
+    catch {fail(path+' response metadata unavailable');}
+    if(!Number.isInteger(status)||status<100||status>599)fail(path+' invalid HTTP status');
+    if(status!==200)fail(path+' HTTP '+status);
+    if(receivedUrl&&receivedUrl!==url)fail(path+' redirected unexpectedly');
     try {bytes[file]=Buffer.from(await response.arrayBuffer());}
-    catch(error){fail(path+' body read: '+(error?.message||error));}
+    catch {fail(path+' body read unavailable');}
   }
   let manifest,register;
   try {manifest=JSON.parse(bytes['manifest.json'].toString('utf8'));}
