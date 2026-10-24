@@ -7,6 +7,10 @@ on:
       - 'test/carrier-probe-retry.test.mjs'
       - 'src/render/head.mjs'
       - 'test/structured-data.test.mjs'
+      - 'src/render/corrections.mjs'
+      - 'scripts/verify-corrections-receiving.mjs'
+      - 'test/correction-intake.test.mjs'
+      - 'test/corrections-http-receiving.test.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -19,6 +23,10 @@ on:
       - 'test/carrier-probe-retry.test.mjs'
       - 'src/render/head.mjs'
       - 'test/structured-data.test.mjs'
+      - 'src/render/corrections.mjs'
+      - 'scripts/verify-corrections-receiving.mjs'
+      - 'test/correction-intake.test.mjs'
+      - 'test/corrections-http-receiving.test.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -72,6 +80,10 @@ jobs:
           node --check test/structured-data.test.mjs
           node --check src/carrier.mjs
           node --check test/carrier-probe-retry.test.mjs
+          node --check src/render/corrections.mjs
+          node --check scripts/verify-corrections-receiving.mjs
+          node --check test/correction-intake.test.mjs
+          node --check test/corrections-http-receiving.test.mjs
       - name: Install original declared dependencies without substituting fixtures
         run: |
           corepack enable
