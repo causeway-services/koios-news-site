@@ -88,7 +88,15 @@ jobs:
       # Full publisher qualification below remains mandatory for release.
       - name: Receive corrections intake, privacy refusals and negative cases without registry
         run: node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
+      # This public-remedy receiving path uses only original Node builtins.
+      # Qualify it before any registry traffic, so a house-registry outage does
+      # not hide regression results behind a long dependency-install failure.
+      - name: Independently test public corrections and privacy failures without registry access
+        timeout-minutes: 2
+        run: |
+          node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
       - name: Install original declared dependencies without substituting fixtures
+        timeout-minutes: 5
         run: |
           corepack enable
           pnpm install --frozen-lockfile --store-dir "$PNPM_STORE_DIR"
