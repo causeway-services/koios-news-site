@@ -171,7 +171,7 @@ test('CLI ignores arbitrary provider diagnostics without reading them: '+payload
     await import(${JSON.stringify(script.href)});`;
   const run=spawnSync(process.execPath,['--input-type=module','-e',program],{encoding:'utf8',timeout:5000});
   assert.equal(run.error,undefined);assert.equal(run.status,1);assert.equal(run.stdout,'');
-  assert.equal(run.stderr,'provider status failure\n');
+  assert.equal(run.stderr,'CORRECTIONS_NOT_RECEIVED: /manifest.json response metadata unavailable\n');
 });
 }
 
@@ -193,5 +193,43 @@ for(const failure of ['serialization','output']){
     const run=spawnSync(process.execPath,['--input-type=module','-e',program],{encoding:'utf8',timeout:5000});
     assert.equal(run.error,undefined);assert.equal(run.status,1);assert.equal(run.stdout,'');
     assert.equal(run.stderr,'CORRECTIONS_NOT_RECEIVED: reader intake missing or privacy boundary omitted\n');
+  });
+}
+
+
+// A genuine receiving failure may carry private transport tokens, mailbox paths
+// or partial pages in its exception. Neither the API nor CLI may copy it.
+for (const stage of ["transport", "status", "url", "body"]) {
+  test("independent corrections receiver keeps provider exceptions private: " + stage, async () => {
+    const sentinel = "PRIVATE_PROVIDER_CONTENT_DO_NOT_PUBLISH";
+    const ordinary = fixture();
+    const fetcher = async requestedUrl => {
+      const response = await ordinary(requestedUrl);
+      if (new URL(requestedUrl).pathname !== "/manifest.json") return response;
+      if (stage === "transport") throw new Error(sentinel);
+      if (stage === "status") return {
+        ...response, get status() { throw new Error(sentinel); },
+      };
+      if (stage === "url") return {
+        ...response, get url() { throw new Error(sentinel); },
+      };
+      return {
+        ...response, arrayBuffer: async () => { throw new Error(sentinel); },
+      };
+    };
+    const expected = stage === "transport"
+      ? "CORRECTIONS_NOT_RECEIVED: /manifest.json transport unavailable"
+      : stage === "body"
+        ? "CORRECTIONS_NOT_RECEIVED: /manifest.json body read unavailable"
+        : "CORRECTIONS_NOT_RECEIVED: /manifest.json response metadata unavailable";
+    await assert.rejects(
+      () => verify("https://koios.news/", { fetcher }),
+      error => {
+        assert.equal(error.message, expected);
+        assert.equal(Object.hasOwn(error, "diagnostics"), false);
+        assert.equal(JSON.stringify(error).includes(sentinel), false);
+        return true;
+      },
+    );
   });
 }
