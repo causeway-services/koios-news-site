@@ -33,6 +33,11 @@ on:
       - '.github/workflows/publisher-entity.yml'
 permissions:
   contents: read
+# Only source-identical work may consume this exact full dependency closure.
+# Superseded PR commits cannot run an overlapping expensive frozen install.
+concurrency:
+  group: publisher-entity-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   structured-data:
     runs-on: ubuntu-latest
@@ -87,14 +92,8 @@ jobs:
       # Native standard-library receiving must still run when our registry is unavailable.
       # Full publisher qualification below remains mandatory for release.
       - name: Receive corrections intake, privacy refusals and negative cases without registry
-        run: node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
-      # This public-remedy receiving path uses only original Node builtins.
-      # Qualify it before any registry traffic, so a house-registry outage does
-      # not hide regression results behind a long dependency-install failure.
-      - name: Independently test public corrections and privacy failures without registry access
         timeout-minutes: 2
-        run: |
-          node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
+        run: node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
       - name: Install original declared dependencies without substituting fixtures
         timeout-minutes: 5
         run: |
