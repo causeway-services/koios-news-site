@@ -84,6 +84,10 @@ jobs:
           node --check scripts/verify-corrections-receiving.mjs
           node --check test/correction-intake.test.mjs
           node --check test/corrections-http-receiving.test.mjs
+      # Native standard-library receiving must still run when our registry is unavailable.
+      # Full publisher qualification below remains mandatory for release.
+      - name: Receive corrections intake, privacy refusals and negative cases without registry
+        run: node --test test/correction-intake.test.mjs test/corrections-http-receiving.test.mjs
       - name: Install original declared dependencies without substituting fixtures
         run: |
           corepack enable
